@@ -17,6 +17,7 @@ import numpy as np
 import torch
 from huggingface_hub import InferenceClient
 
+nltk.download('stopwords')
 lemmatizer = WordNetLemmatizer()
 stop_words = set(stopwords.words('english'))
 
