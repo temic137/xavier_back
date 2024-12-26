@@ -50,6 +50,7 @@ from flask_migrate import Migrate
 from sqlalchemy import Text
 from sqlalchemy.dialects import postgresql
 from routes.analytics import analytics_bp
+from waitress import serve
 
 def create_app():
     app = Flask(__name__, static_url_path='/static')  # Ensure static files are served from the correct path
@@ -73,7 +74,12 @@ def create_app():
     
     return app
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+# if __name__ == '__main__':
+#     port = int(os.environ.get('PORT', 5000))
+#     app = create_app()
+#     app.run(host='0.0.0.0', port=port, debug=True)
+
+
+if __name__ == "__main__":
     app = create_app()
-    app.run(host='0.0.0.0', port=port, debug=True)
+    serve(app, host='0.0.0.0', port=8000)
