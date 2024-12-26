@@ -5,7 +5,7 @@ from config import Config
 from extensions import db
 from routes.auth import auth_bp
 from routes.chatbot import chatbot_bp
-from routes.inventory import inventory_bp
+# from routes.inventory import inventory_bp
 import os
 from flask_migrate import Migrate
 from sqlalchemy import Text
