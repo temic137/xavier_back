@@ -21,7 +21,7 @@ def create_app():
     migrate = Migrate(app, db)
     app.register_blueprint(auth_bp)
     app.register_blueprint(chatbot_bp)
-    app.register_blueprint(inventory_bp)
+    # app.register_blueprint(inventory_bp)
     app.register_blueprint(analytics_bp)
 
     with app.app_context():
