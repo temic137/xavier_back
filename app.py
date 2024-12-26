@@ -1,5 +1,3 @@
-
-
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -26,17 +24,17 @@ def create_app():
     app.register_blueprint(inventory_bp)
     app.register_blueprint(analytics_bp)
 
-   
     with app.app_context():
         db.create_all()
     
     return app
 
+# Create the app instance at module level for Gunicorn to find
+app = create_app()
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app = create_app()
     app.run(host='0.0.0.0', port=port, debug=True)
-
 # from flask import Flask, send_from_directory
 # from flask_cors import CORS
 # from flask_sqlalchemy import SQLAlchemy
