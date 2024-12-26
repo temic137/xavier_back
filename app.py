@@ -12,16 +12,45 @@ from sqlalchemy import Text
 from sqlalchemy.dialects import postgresql
 from routes.analytics import analytics_bp
 
+# def create_app():
+#     app = Flask(__name__) 
+#     app.config.from_object(Config)
+    
+#     CORS(app, supports_credentials=True)
+#     db.init_app(app)
+#     migrate = Migrate(app, db)
+#     app.register_blueprint(auth_bp)
+#     app.register_blueprint(chatbot_bp)
+#     # app.register_blueprint(inventory_bp)
+#     app.register_blueprint(analytics_bp)
+
+#     with app.app_context():
+#         db.create_all()
+    
+#     return app
+
 def create_app():
     app = Flask(__name__) 
     app.config.from_object(Config)
     
-    CORS(app, supports_credentials=True)
+    # Update CORS configuration
+    CORS(app, 
+         resources={r"/*": {
+             "origins": [
+                 "https://xavier-ai-frontend.vercel.app",  # Your Vercel domain
+                 "http://localhost:4200",  # Local development
+                 "http://localhost:3000"   # Local development alternative
+             ],
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"],
+             "supports_credentials": True
+         }})
+    
     db.init_app(app)
     migrate = Migrate(app, db)
     app.register_blueprint(auth_bp)
     app.register_blueprint(chatbot_bp)
-    # app.register_blueprint(inventory_bp)
+    app.register_blueprint(inventory_bp)
     app.register_blueprint(analytics_bp)
 
     with app.app_context():
