@@ -2,7 +2,7 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
-from extensions import db, mongo_client
+from extensions import db
 from routes.auth import auth_bp
 from routes.chatbot import chatbot_bp
 from routes.inventory import inventory_bp
