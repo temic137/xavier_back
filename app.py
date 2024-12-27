@@ -33,18 +33,19 @@ def create_app():
     app = Flask(__name__) 
     app.config.from_object(Config)
     
-    # Update CORS configuration
-    CORS(app, 
-         resources={r"/*": {
-             "origins": [
-                 "https://xavier-ai-frontend.vercel.app",  # Your Vercel domain
-                 "http://localhost:4200",  # Local development
-                 "http://localhost:3000"   # Local development alternative
-             ],
-             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "supports_credentials": True
-         }})
+    # # Update CORS configuration
+    # CORS(app, 
+    #      resources={r"/*": {
+    #          "origins": [
+    #              "https://xavier-ai-frontend.vercel.app",  # Your Vercel domain
+    #              "http://localhost:4200",  # Local development
+    #              "http://localhost:3000"   # Local development alternative
+    #          ],
+    #          "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    #          "allow_headers": ["Content-Type", "Authorization"],
+    #          "supports_credentials": True
+    #      }})
+    CORS(app, resources={r"/*": {"origins": ["xavier-ai-frontend.vercel.app"]}})
     
     db.init_app(app)
     migrate = Migrate(app, db)
