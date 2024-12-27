@@ -45,7 +45,13 @@ def create_app():
     #          "allow_headers": ["Content-Type", "Authorization"],
     #          "supports_credentials": True
     #      }})
-    CORS(app, resources={r"/*": {"origins": ["http://localhost:4200","https://xavier-ai-frontend-3wwy89gjm-temis-projects-568593b8.vercel.app"]}})
+    # CORS(app, resources={r"/*": {"origins": ["http://localhost:4200","https://xavier-ai-frontend-3wwy89gjm-temis-projects-568593b8.vercel.app"]}})
+
+    CORS(app, resources={r"/*": {"origins": [
+    "http://localhost:4200",
+    "https://xavier-ai-frontend-3xvr9ruxm-temis-projects-568593b8.vercel.app",
+    "https://xavier-ai-frontend-3xvr9ruxm-temis-projects-568593b8.vercel.app"  # Add this
+    ]}})
     
     db.init_app(app)
     migrate = Migrate(app, db)
