@@ -48,8 +48,6 @@ def create_app():
     # CORS(app, resources={r"/*": {"origins": ["http://localhost:4200","https://xavier-ai-frontend-3wwy89gjm-temis-projects-568593b8.vercel.app"]}})
 
     CORS(app, resources={r"/*": {"origins": [
-    "http://localhost:4200",
-    "https://xavier-ai-frontend-3xvr9ruxm-temis-projects-568593b8.vercel.app",
     "https://xavier-ai-frontend-7fk765euc-temis-projects-568593b8.vercel.app"  # Add this
     ]}})
     
