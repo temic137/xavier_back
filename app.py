@@ -236,7 +236,7 @@ def create_app():
     with app.app_context():
         db.create_all()
     
-   @app.after_request
+@app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
