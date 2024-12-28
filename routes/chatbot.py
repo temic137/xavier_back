@@ -54,6 +54,7 @@ def handle_errors(f):
 
 @chatbot_bp.route('/create_chatbot', methods=['POST'])
 @handle_errors
+@login_required
 def create_chatbot():
     data = request.json
     name = data.get('name')
@@ -76,6 +77,7 @@ def create_chatbot():
 
 @chatbot_bp.route('/chatbots', methods=['GET'])
 @handle_errors
+@login_required
 def get_chatbots():
     user_id = session['user_id']
     chatbots = Chatbot.query.filter_by(user_id=user_id).all()
@@ -86,6 +88,7 @@ def get_chatbots():
 
 
 @chatbot_bp.route('/gmail/authorize', methods=['GET'])
+@login_required
 def gmail_authorize():
     """
     Initiate Gmail OAuth authorization flow
@@ -121,6 +124,7 @@ def gmail_authorize():
     return redirect(authorization_url)
 
 @chatbot_bp.route('/gmail/oauth/callback', methods=['GET'])
+@login_required
 def gmail_oauth_callback():
     """
     Handle OAuth callback and store Gmail credentials
@@ -198,6 +202,7 @@ def gmail_oauth_callback():
         return jsonify({"error": "Failed to complete Gmail integration"}), 500
 
 @chatbot_bp.route('/gmail/integrations', methods=['GET'])
+@login_required
 def get_gmail_integrations():
     """
     Retrieve all Gmail integrations for the current user
@@ -213,6 +218,7 @@ def get_gmail_integrations():
     return jsonify(integration_list), 200
 
 @chatbot_bp.route('/gmail/integrations/<int:integration_id>', methods=['DELETE'])
+@login_required
 def delete_gmail_integration(integration_id):
     """
     Delete a specific Gmail integration
@@ -247,6 +253,7 @@ def transcribe_audio():
 
 
 @chatbot_bp.route('/train_chatbot/<chatbot_id>', methods=['POST'])
+@login_required
 @handle_errors
 def train_chatbot(chatbot_id):
     try:
@@ -360,6 +367,7 @@ def train_chatbot(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>', methods=['GET'])
+@login_required
 def get_chatbot_data(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot or chatbot.user_id != session['user_id']:
@@ -371,6 +379,7 @@ def get_chatbot_data(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>', methods=['PUT'])
+@login_required
 def update_chatbot_data(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot or chatbot.user_id != session['user_id']:
@@ -386,6 +395,7 @@ def update_chatbot_data(chatbot_id):
 
 
 @chatbot_bp.route('/delete_chatbot/<chatbot_id>', methods=['DELETE'])
+@login_required
 @handle_errors
 def delete_chatbot(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
@@ -400,6 +410,7 @@ def delete_chatbot(chatbot_id):
 
 
 @chatbot_bp.route('/chatbots/<chatbot_id>', methods=['GET'])
+@login_required
 @handle_errors
 def get_chatbot(chatbot_id):
     user_id = session['user_id']
@@ -426,6 +437,7 @@ def get_chatbot(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
+@login_required
 @handle_errors
 def chatbot_ask(chatbot_id):
     start_time = time()  # Start timing the request
@@ -556,6 +568,7 @@ def submit_feedback(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
+
 @handle_errors
 def get_chatbot_feedback(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
@@ -632,6 +645,7 @@ def get_all_chatbots_feedback():
 
 
 @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
+@login_required
 @handle_errors
 def get_chatbot_script(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
