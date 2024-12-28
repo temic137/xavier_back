@@ -183,8 +183,7 @@
 #     port = int(os.environ.get('PORT', 5000))
 #     app.run(host='0.0.0.0', port=port, debug=True)
 
-
-from flask import Flask, send_from_directory,request
+from flask import Flask, send_from_directory, request  # Add request here
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
@@ -213,7 +212,7 @@ def create_app():
          resources={r"/*": {
              "origins": [
                  "https://xavier-ai-frontend.vercel.app",
-                 "http://localhost:4200"  # Add this for local development
+                 "http://localhost:4200"
              ],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
@@ -236,14 +235,15 @@ def create_app():
     with app.app_context():
         db.create_all()
     
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
-    return response
+    # Move the after_request function inside create_app
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
+        return response
     
     return app
 
