@@ -79,11 +79,18 @@ def create_chatbot():
 @handle_errors
 @login_required
 def get_chatbots():
-    user_id = session['user_id']
-    chatbots = Chatbot.query.filter_by(user_id=user_id).all()
-    chatbot_list = [{"id": c.id, "name": c.name} for c in chatbots]
-
-    return jsonify(chatbot_list), 200
+    try:
+        user_id = session.get('user_id')  # Use .get() instead of direct access
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+            
+        chatbots = Chatbot.query.filter_by(user_id=user_id).all()
+        chatbot_list = [{"id": c.id, "name": c.name} for c in chatbots]
+        
+        return jsonify(chatbot_list), 200
+    except Exception as e:
+        current_app.logger.error(f"Error in get_chatbots: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
 
 
 
