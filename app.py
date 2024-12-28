@@ -122,6 +122,68 @@
 
 
 
+# from flask import Flask, send_from_directory
+# from flask_cors import CORS
+# from flask_sqlalchemy import SQLAlchemy
+# from config import Config
+# from extensions import db
+# from routes.auth import auth_bp
+# from routes.chatbot import chatbot_bp
+# from routes.analytics import analytics_bp
+# import os
+# from flask_migrate import Migrate
+# from sqlalchemy import Text
+# from sqlalchemy.dialects import postgresql
+
+# def create_app():
+#     app = Flask(__name__)
+#     app.config.from_object(Config)
+    
+    
+#     # Configure CORS with all necessary settings
+#     CORS(app, 
+#          resources={r"/*": {
+#              "origins": ["https://xavier-ai-frontend.vercel.app"],
+#              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+#              "allow_headers": ["Content-Type", "Authorization"],
+#              "expose_headers": ["Content-Type", "Authorization"],
+#              "supports_credentials": True,
+#              "send_wildcard": False,
+#              "max_age": 86400
+#          }})
+    
+#     # Initialize extensions
+#     db.init_app(app)
+#     migrate = Migrate(app, db)
+    
+#     # Register blueprints
+#     app.register_blueprint(auth_bp)
+#     app.register_blueprint(chatbot_bp)
+#     app.register_blueprint(analytics_bp)
+    
+#     # Create database tables
+#     with app.app_context():
+#         db.create_all()
+    
+#     # Add CORS headers to all responses
+#     @app.after_request
+#     def after_request(response):
+#         response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
+#         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+#         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+#         response.headers.add('Access-Control-Allow-Credentials', 'true')
+#         return response
+    
+#     return app
+
+# # Create the app instance for Gunicorn
+# app = create_app()
+
+# if __name__ == '__main__':
+#     port = int(os.environ.get('PORT', 5000))
+#     app.run(host='0.0.0.0', port=port, debug=True)
+
+
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -139,13 +201,23 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
+    # Add session cookie configuration
+    app.config.update(
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_SAMESITE='None',
+        SESSION_COOKIE_HTTPONLY=True
+    )
+    
     # Configure CORS with all necessary settings
     CORS(app, 
          resources={r"/*": {
-             "origins": ["https://xavier-ai-frontend.vercel.app"],
+             "origins": [
+                 "https://xavier-ai-frontend.vercel.app",
+                 "http://localhost:4200"  # Add this for local development
+             ],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
-             "expose_headers": ["Content-Type", "Authorization"],
+             "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
+             "expose_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
              "supports_credentials": True,
              "send_wildcard": False,
              "max_age": 86400
@@ -167,10 +239,13 @@ def create_app():
     # Add CORS headers to all responses
     @app.after_request
     def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        origin = request.headers.get('Origin')
+        if origin in ["https://xavier-ai-frontend.vercel.app", "http://localhost:4200"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
+        response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
         return response
     
     return app
