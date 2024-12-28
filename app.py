@@ -184,7 +184,7 @@
 #     app.run(host='0.0.0.0', port=port, debug=True)
 
 
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory,request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from config import Config
@@ -236,17 +236,14 @@ def create_app():
     with app.app_context():
         db.create_all()
     
-    # Add CORS headers to all responses
-    @app.after_request
-    def after_request(response):
-        origin = request.headers.get('Origin')
-        if origin in ["https://xavier-ai-frontend.vercel.app", "http://localhost:4200"]:
-            response.headers.add('Access-Control-Allow-Origin', origin)
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
-        return response
+   @app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
+    return response
     
     return app
 
