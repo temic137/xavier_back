@@ -215,7 +215,7 @@ def create_app():
                  "http://localhost:4200"
              ],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
+             "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken", "User-ID"  ],
              "expose_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
              "supports_credentials": True,
              "send_wildcard": False,
@@ -239,7 +239,7 @@ def create_app():
     @app.after_request
     def after_request(response):
         response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken','User-ID'  )
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
