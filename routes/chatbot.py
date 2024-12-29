@@ -536,8 +536,124 @@ def transcribe_audio_file(file_path):
     return None
 
 
+# @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
+# @login_required
+# @cross_origin()
+# def submit_feedback(chatbot_id):
+#     if request.method == 'OPTIONS':
+#         return '', 204
+    
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     data = request.json
+#     feedback_text = data.get('feedback')
+#     user_id = request.headers.get('User-ID')  # Retrieve the user ID
+
+#     if not feedback_text:
+#         return "Feedback is missing", 400
+
+#     if not feedback_text:
+#         return jsonify({"error": "No feedback provided"}), 400
+#     if not user_id:
+#         return jsonify({"error": "User ID is missing"}), 400  # Ensure User-ID is present
+
+#     try:
+#         new_feedback = Feedback(
+#             chatbot_id=chatbot_id,
+#             user_id=user_id,  # Ensure this is an integer or correct type as per your DB schema
+#             feedback=feedback_text,
+#             created_at=datetime.utcnow()
+#         )
+#         db.session.add(new_feedback)
+#         db.session.commit()
+#         return jsonify({"message": "Feedback submitted successfully"}), 200
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in submit_feedback: {str(e)}")
+#         return jsonify({"error": "An error occurred while saving the feedback"}), 500
+
+
+# @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
+# @login_required
+# @handle_errors
+# def get_chatbot_feedback(chatbot_id):
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot or chatbot.user_id != session['user_id']:
+#         return jsonify({"error": "Chatbot not found or unauthorized"}), 404
+    
+#     # Query all feedback for the specified chatbot
+#     feedback_list = Feedback.query.filter_by(chatbot_id=chatbot_id).order_by(desc(Feedback.created_at)).all()
+    
+#     # Prepare the response data as a string
+#     feedback_strings = []
+#     for feedback in feedback_list:
+#         feedback_str = (
+#             f"Feedback ID: {feedback.id}\n"
+#             f"User ID: {feedback.user_id}\n"
+#             f"Feedback: {feedback.feedback}\n"
+#             f"Created At: {feedback.created_at.isoformat()}\n"
+#             f"------------------------"
+#         )
+#         feedback_strings.append(feedback_str)
+    
+#     # Join all feedback strings with newlines
+#     combined_feedback = "\n".join(feedback_strings)
+    
+#     return jsonify({
+#         "chatbot_name": chatbot.name,
+#         "feedback": combined_feedback
+#     }), 200
+
+
+
+# @chatbot_bp.route('/chatbot/all-feedback', methods=['GET'])
+# @login_required
+# @handle_errors
+# def get_all_chatbots_feedback():
+#     # Query all chatbots belonging to the current user
+#     user_chatbots = Chatbot.query.filter_by(user_id=session['user_id']).all()
+    
+#     if not user_chatbots:
+#         return jsonify({"error": "No chatbots found"}), 404
+    
+#     response_data = []
+    
+#     for chatbot in user_chatbots:
+#         # Query all feedback for each chatbot
+#         feedback_list = Feedback.query.filter_by(chatbot_id=chatbot.id)\
+#                               .order_by(desc(Feedback.created_at)).all()
+        
+#         # Prepare feedback strings for this chatbot
+#         feedback_strings = []
+#         for feedback in feedback_list:
+#             feedback_str = (
+#                 f"Feedback ID: {feedback.id}\n"
+#                 f"User ID: {feedback.user_id}\n"
+#                 f"Feedback: {feedback.feedback}\n"
+#                 f"Created At: {feedback.created_at.isoformat()}\n"
+#                 f"------------------------"
+#             )
+#             feedback_strings.append(feedback_str)
+        
+#         # Add chatbot data to response
+#         chatbot_data = {
+#             "chatbot_id": chatbot.id,
+#             "chatbot_name": chatbot.name,
+#             "feedback": "\n".join(feedback_strings) if feedback_strings else "No feedback available"
+#         }
+#         response_data.append(chatbot_data)
+    
+#     print(f"feedback:{response_data}")
+#     return jsonify({
+#         "total_chatbots": len(user_chatbots),
+#         "chatbots": response_data
+#     }), 200
+
+
+
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
-@login_required
 @cross_origin()
 def submit_feedback(chatbot_id):
     if request.method == 'OPTIONS':
@@ -552,17 +668,14 @@ def submit_feedback(chatbot_id):
     user_id = request.headers.get('User-ID')  # Retrieve the user ID
 
     if not feedback_text:
-        return "Feedback is missing", 400
-
-    if not feedback_text:
         return jsonify({"error": "No feedback provided"}), 400
     if not user_id:
-        return jsonify({"error": "User ID is missing"}), 400  # Ensure User-ID is present
+        return jsonify({"error": "User ID is missing"}), 400
 
     try:
         new_feedback = Feedback(
             chatbot_id=chatbot_id,
-            user_id=user_id,  # Ensure this is an integer or correct type as per your DB schema
+            user_id=user_id,
             feedback=feedback_text,
             created_at=datetime.utcnow()
         )
@@ -576,12 +689,11 @@ def submit_feedback(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
-@login_required
 @handle_errors
 def get_chatbot_feedback(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
-    if not chatbot or chatbot.user_id != session['user_id']:
-        return jsonify({"error": "Chatbot not found or unauthorized"}), 404
+    if not chatbot:
+        return jsonify({"error": "Chatbot not found"}), 404
     
     # Query all feedback for the specified chatbot
     feedback_list = Feedback.query.filter_by(chatbot_id=chatbot_id).order_by(desc(Feedback.created_at)).all()
@@ -607,20 +719,18 @@ def get_chatbot_feedback(chatbot_id):
     }), 200
 
 
-
 @chatbot_bp.route('/chatbot/all-feedback', methods=['GET'])
-@login_required
 @handle_errors
 def get_all_chatbots_feedback():
-    # Query all chatbots belonging to the current user
-    user_chatbots = Chatbot.query.filter_by(user_id=session['user_id']).all()
+    # Query all chatbots
+    chatbots = Chatbot.query.all()
     
-    if not user_chatbots:
+    if not chatbots:
         return jsonify({"error": "No chatbots found"}), 404
     
     response_data = []
     
-    for chatbot in user_chatbots:
+    for chatbot in chatbots:
         # Query all feedback for each chatbot
         feedback_list = Feedback.query.filter_by(chatbot_id=chatbot.id)\
                               .order_by(desc(Feedback.created_at)).all()
@@ -645,12 +755,10 @@ def get_all_chatbots_feedback():
         }
         response_data.append(chatbot_data)
     
-    print(f"feedback:{response_data}")
     return jsonify({
-        "total_chatbots": len(user_chatbots),
+        "total_chatbots": len(chatbots),
         "chatbots": response_data
     }), 200
-
 
 
 @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
