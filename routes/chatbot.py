@@ -738,7 +738,6 @@ def transcribe_audio_file(file_path):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
-@cross_origin(supports_credentials=True)
 def submit_feedback(chatbot_id):
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
