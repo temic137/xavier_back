@@ -18,7 +18,9 @@ def create_app():
     app = Flask(__name__) 
     app.config.from_object(Config)
     
-    CORS(app, supports_credentials=True)
+    CORS(app, supports_credentials=True, resources={r"/*": {"origins": [
+    "https://xavier-ai-frontend.vercel.app"  # Add this
+    ]}})
     db.init_app(app)
     migrate = Migrate(app, db)
     app.register_blueprint(auth_bp)
