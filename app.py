@@ -215,7 +215,7 @@ def create_app():
                  "http://localhost:4200"
              ],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
+             "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken","User-ID"],
              "expose_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
              "supports_credentials": True,
              "send_wildcard": False,
