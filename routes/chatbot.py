@@ -687,7 +687,6 @@ def submit_feedback(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
-@handle_errors
 def get_chatbot_feedback(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
@@ -718,7 +717,6 @@ def get_chatbot_feedback(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/all-feedback', methods=['GET'])
-@handle_errors
 def get_all_chatbots_feedback():
     # Query all chatbots
     chatbots = Chatbot.query.all()
