@@ -444,8 +444,6 @@ def get_chatbot(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
-@login_required
-@handle_errors
 def chatbot_ask(chatbot_id):
     start_time = time()  # Start timing the request
     
