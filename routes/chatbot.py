@@ -621,43 +621,41 @@ def transcribe_audio_file(file_path):
     return None
 
 
-# @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
-# @login_required
-# @cross_origin()
-# def submit_feedback(chatbot_id):
-#     if request.method == 'OPTIONS':
-#         return '', 204
+@chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
+def submit_feedback(chatbot_id):
+    if request.method == 'OPTIONS':
+        return '', 204
     
-#     chatbot = Chatbot.query.get(chatbot_id)
-#     if not chatbot:
-#         return jsonify({"error": "Chatbot not found"}), 404
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot:
+        return jsonify({"error": "Chatbot not found"}), 404
 
-#     data = request.json
-#     feedback_text = data.get('feedback')
-#     user_id = request.headers.get('User-ID')  # Retrieve the user ID
+    data = request.json
+    feedback_text = data.get('feedback')
+    user_id = request.headers.get('User-ID')  # Retrieve the user ID
 
-#     if not feedback_text:
-#         return "Feedback is missing", 400
+    if not feedback_text:
+        return "Feedback is missing", 400
 
-#     if not feedback_text:
-#         return jsonify({"error": "No feedback provided"}), 400
-#     if not user_id:
-#         return jsonify({"error": "User ID is missing"}), 400  # Ensure User-ID is present
+    if not feedback_text:
+        return jsonify({"error": "No feedback provided"}), 400
+    if not user_id:
+        return jsonify({"error": "User ID is missing"}), 400  # Ensure User-ID is present
 
-#     try:
-#         new_feedback = Feedback(
-#             chatbot_id=chatbot_id,
-#             user_id=user_id,  # Ensure this is an integer or correct type as per your DB schema
-#             feedback=feedback_text,
-#             created_at=datetime.utcnow()
-#         )
-#         db.session.add(new_feedback)
-#         db.session.commit()
-#         return jsonify({"message": "Feedback submitted successfully"}), 200
-#     except SQLAlchemyError as e:
-#         db.session.rollback()
-#         current_app.logger.error(f"Database error in submit_feedback: {str(e)}")
-#         return jsonify({"error": "An error occurred while saving the feedback"}), 500
+    try:
+        new_feedback = Feedback(
+            chatbot_id=chatbot_id,
+            user_id=user_id,  # Ensure this is an integer or correct type as per your DB schema
+            feedback=feedback_text,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(new_feedback)
+        db.session.commit()
+        return jsonify({"message": "Feedback submitted successfully"}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Database error in submit_feedback: {str(e)}")
+        return jsonify({"error": "An error occurred while saving the feedback"}), 500
 
 
 # @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
@@ -737,51 +735,51 @@ def transcribe_audio_file(file_path):
 #     }), 200
 
 
-@chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
-def submit_feedback(chatbot_id):
-    if request.method == 'OPTIONS':
-        response = jsonify({'status': 'ok'})
-        origin = request.headers.get('Origin')
-        if origin in ["http://localhost:4200", "https://xavier-ai-frontend.vercel.app"]:
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRFToken, User-ID')
-            response.headers.add('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS')
-        return response, 204
+# @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
+# def submit_feedback(chatbot_id):
+#     if request.method == 'OPTIONS':
+#         response = jsonify({'status': 'ok'})
+#         origin = request.headers.get('Origin')
+#         if origin in ["http://localhost:4200", "https://xavier-ai-frontend.vercel.app"]:
+#             response.headers.add('Access-Control-Allow-Origin', origin)
+#             response.headers.add('Access-Control-Allow-Credentials', 'true')
+#             response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRFToken, User-ID')
+#             response.headers.add('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS')
+#         return response, 204
     
-    chatbot = Chatbot.query.get(chatbot_id)
-    if not chatbot:
-        return jsonify({"error": "Chatbot not found"}), 404
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
 
-    data = request.json
-    feedback_text = data.get('feedback')
-    user_id = request.headers.get('User-ID')
+#     data = request.json
+#     feedback_text = data.get('feedback')
+#     user_id = request.headers.get('User-ID')
 
-    if not feedback_text:
-        return jsonify({"error": "No feedback provided"}), 400
-    if not user_id:
-        return jsonify({"error": "User ID is missing"}), 400
+#     if not feedback_text:
+#         return jsonify({"error": "No feedback provided"}), 400
+#     if not user_id:
+#         return jsonify({"error": "User ID is missing"}), 400
 
-    try:
-        new_feedback = Feedback(
-            chatbot_id=chatbot_id,
-            user_id=user_id,
-            feedback=feedback_text,
-            created_at=datetime.utcnow()
-        )
-        db.session.add(new_feedback)
-        db.session.commit()
+#     try:
+#         new_feedback = Feedback(
+#             chatbot_id=chatbot_id,
+#             user_id=user_id,
+#             feedback=feedback_text,
+#             created_at=datetime.utcnow()
+#         )
+#         db.session.add(new_feedback)
+#         db.session.commit()
         
-        response = jsonify({"message": "Feedback submitted successfully"})
-        origin = request.headers.get('Origin')
-        if origin in ["http://localhost:4200", "https://xavier-ai-frontend.vercel.app"]:
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response, 200
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        current_app.logger.error(f"Database error in submit_feedback: {str(e)}")
-        return jsonify({"error": "An error occurred while saving the feedback"}), 500
+#         response = jsonify({"message": "Feedback submitted successfully"})
+#         origin = request.headers.get('Origin')
+#         if origin in ["http://localhost:4200", "https://xavier-ai-frontend.vercel.app"]:
+#             response.headers.add('Access-Control-Allow-Origin', origin)
+#             response.headers.add('Access-Control-Allow-Credentials', 'true')
+#         return response, 200
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in submit_feedback: {str(e)}")
+#         return jsonify({"error": "An error occurred while saving the feedback"}), 500
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
