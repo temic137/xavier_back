@@ -443,25 +443,111 @@ def get_chatbot(chatbot_id):
 
 
 
-@chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
+# @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
+# def chatbot_ask(chatbot_id):
+#     start_time = time()  # Start timing the request
+    
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     if request.content_type == 'application/json':
+#         # Handle JSON input
+#         data = request.json
+#         question = data.get('question')
+#     else:
+#         return jsonify({"error": "Unsupported content type"}), 415
+
+#     if not question:
+#         return jsonify({"error": "No question provided"}), 400
+
+#     try:
+#         chatbot_data_str = chatbot.data if isinstance(chatbot.data, str) else json.dumps(chatbot.data)
+#         chatbot_data = json.loads(chatbot_data_str)
+        
+#         current_app.logger.debug(f"Chatbot data type: {type(chatbot_data)}")
+#         current_app.logger.debug(f"Chatbot data: {chatbot_data}")
+        
+#         if isinstance(chatbot_data, list):
+#             if len(chatbot_data) > 0:
+#                 chatbot_data = chatbot_data[-1]
+#             else:
+#                 raise ValueError("Chatbot data list is empty")
+#         elif not isinstance(chatbot_data, dict):
+#             raise ValueError(f"Invalid chatbot data format: {type(chatbot_data)}")
+        
+#         current_app.logger.debug(f"Processed chatbot data type: {type(chatbot_data)}")
+#         current_app.logger.debug(f"Processed chatbot data: {chatbot_data}")
+
+       
+       
+#         answer = get_general_answer(json.dumps(chatbot_data), question)
+        
+#         # Calculate processing time
+#         processing_time = time() - start_time
+        
+        
+#        # Track analytics
+#         analytics_data = {
+#             "question": question,
+#             "answer": answer,
+#             "question_metadata": {
+#                 "processing_time": time() - start_time,
+#                 "keywords_matched": [
+#                     keyword for keyword in ["proce", "inventory", "stock", "available", "category", "type"]
+#                     if keyword in question.lower()
+#                 ]
+#             }
+#         }
+#         track_question_helper(chatbot_id, analytics_data)
+        
+#         return jsonify({
+#             "question": question,
+#             "answer": answer,
+#             "processing_time": round(time() - start_time, 3)
+#         })
+
+#     except json.JSONDecodeError as e:
+#         current_app.logger.error(f"JSON decode error: {str(e)}")
+#         return jsonify({"error": "Invalid chatbot data format"}), 500
+#     except ValueError as e:
+#         current_app.logger.error(f"Value error: {str(e)}")
+#         return jsonify({"error": str(e)}), 500
+#     except Exception as e:
+#         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+
+
+@chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST', 'OPTIONS'])
+@cross_origin(supports_credentials=True)
 def chatbot_ask(chatbot_id):
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:4200", "https://xavier-ai-frontend.vercel.app"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRFToken, User-ID')
+            response.headers.add('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS')
+        return response, 204
+
     start_time = time()  # Start timing the request
     
-    chatbot = Chatbot.query.get(chatbot_id)
-    if not chatbot:
-        return jsonify({"error": "Chatbot not found"}), 404
-
-    if request.content_type == 'application/json':
-        # Handle JSON input
-        data = request.json
-        question = data.get('question')
-    else:
-        return jsonify({"error": "Unsupported content type"}), 415
-
-    if not question:
-        return jsonify({"error": "No question provided"}), 400
-
     try:
+        chatbot = Chatbot.query.get(chatbot_id)
+        if not chatbot:
+            return jsonify({"error": "Chatbot not found"}), 404
+
+        if request.content_type == 'application/json':
+            # Handle JSON input
+            data = request.json
+            question = data.get('question')
+        else:
+            return jsonify({"error": "Unsupported content type"}), 415
+
+        if not question:
+            return jsonify({"error": "No question provided"}), 400
+
         chatbot_data_str = chatbot.data if isinstance(chatbot.data, str) else json.dumps(chatbot.data)
         chatbot_data = json.loads(chatbot_data_str)
         
@@ -475,24 +561,18 @@ def chatbot_ask(chatbot_id):
                 raise ValueError("Chatbot data list is empty")
         elif not isinstance(chatbot_data, dict):
             raise ValueError(f"Invalid chatbot data format: {type(chatbot_data)}")
-        
-        current_app.logger.debug(f"Processed chatbot data type: {type(chatbot_data)}")
-        current_app.logger.debug(f"Processed chatbot data: {chatbot_data}")
 
-       
-       
         answer = get_general_answer(json.dumps(chatbot_data), question)
         
         # Calculate processing time
         processing_time = time() - start_time
         
-        
-       # Track analytics
+        # Track analytics
         analytics_data = {
             "question": question,
             "answer": answer,
             "question_metadata": {
-                "processing_time": time() - start_time,
+                "processing_time": processing_time,
                 "keywords_matched": [
                     keyword for keyword in ["proce", "inventory", "stock", "available", "category", "type"]
                     if keyword in question.lower()
@@ -501,11 +581,19 @@ def chatbot_ask(chatbot_id):
         }
         track_question_helper(chatbot_id, analytics_data)
         
-        return jsonify({
+        response = jsonify({
             "question": question,
             "answer": answer,
-            "processing_time": round(time() - start_time, 3)
+            "processing_time": round(processing_time, 3)
         })
+
+        # Add CORS headers to the response
+        origin = request.headers.get('Origin')
+        if origin in ["http://localhost:4200", "https://xavier-ai-frontend.vercel.app"]:
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+        
+        return response
 
     except json.JSONDecodeError as e:
         current_app.logger.error(f"JSON decode error: {str(e)}")
@@ -516,7 +604,6 @@ def chatbot_ask(chatbot_id):
     except Exception as e:
         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
-
 
 
 
@@ -651,7 +738,7 @@ def transcribe_audio_file(file_path):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
-# @cross_origin(supports_credentials=True)
+@cross_origin(supports_credentials=True)
 def submit_feedback(chatbot_id):
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
