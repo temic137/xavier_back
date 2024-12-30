@@ -235,15 +235,15 @@ def create_app():
     with app.app_context():
         db.create_all()
     
-    # Move the after_request function inside create_app
-    @app.after_request
-    def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
-        return response
+    # # Move the after_request function inside create_app
+    # @app.after_request
+    # def after_request(response):
+    #     response.headers.add('Access-Control-Allow-Origin', 'https://xavier-ai-frontend.vercel.app')
+    #     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-CSRFToken')
+    #     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    #     response.headers.add('Access-Control-Allow-Credentials', 'true')
+    #     response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
+    #     return response
     
     return app
 
