@@ -211,7 +211,7 @@ def create_app():
     CORS(app, 
          resources={r"/*": {
              "origins": [
-                 "https://xavier-ai-frontend.vercel.app",
+                 "https://xavierai.vercel.app",
                  "http://localhost:4200"
              ],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
