@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, session, current_app,logging, url_for, redirect,  render_template, url_for,Response
-from models import Chatbot,Feedback
+from models import Chatbot,Feedback, Ticket, TicketResponse
 from werkzeug.utils import secure_filename
 from extensions import db
 from utils.nlp_utils import preprocess_text, get_general_answer
@@ -53,6 +53,7 @@ def handle_errors(f):
     return decorated_function
 
 @chatbot_bp.route('/create_chatbot', methods=['POST'])
+@login_required
 @handle_errors
 def create_chatbot():
     data = request.json
@@ -75,13 +76,21 @@ def create_chatbot():
 
 
 @chatbot_bp.route('/chatbots', methods=['GET'])
+@login_required
 @handle_errors
 def get_chatbots():
-    user_id = session['user_id']
-    chatbots = Chatbot.query.filter_by(user_id=user_id).all()
-    chatbot_list = [{"id": c.id, "name": c.name} for c in chatbots]
-
-    return jsonify(chatbot_list), 200
+    try:
+        user_id = session.get('user_id')  # Use .get() instead of direct access
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+            
+        chatbots = Chatbot.query.filter_by(user_id=user_id).all()
+        chatbot_list = [{"id": c.id, "name": c.name} for c in chatbots]
+        
+        return jsonify(chatbot_list), 200
+    except Exception as e:
+        current_app.logger.error(f"Error in get_chatbots: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
 
 
 
@@ -421,12 +430,7 @@ def get_chatbot(chatbot_id):
         "chatbot_list": chatbot_list
     }), 200
 
-   
-
-
-
 @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
-@handle_errors
 def chatbot_ask(chatbot_id):
     start_time = time()  # Start timing the request
     
@@ -503,7 +507,6 @@ def chatbot_ask(chatbot_id):
 
 
 
-
 def transcribe_audio_file(file_path):
     r = sr.Recognizer()
     with sr.AudioFile(file_path) as source:
@@ -518,7 +521,6 @@ def transcribe_audio_file(file_path):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
-@cross_origin()
 def submit_feedback(chatbot_id):
     if request.method == 'OPTIONS':
         return '', 204
@@ -556,11 +558,12 @@ def submit_feedback(chatbot_id):
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
+@login_required
 @handle_errors
 def get_chatbot_feedback(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
-    if not chatbot or chatbot.user_id != session['user_id']:
-        return jsonify({"error": "Chatbot not found or unauthorized"}), 404
+    if not chatbot:
+        return jsonify({"error": "Chatbot not found"}), 404
     
     # Query all feedback for the specified chatbot
     feedback_list = Feedback.query.filter_by(chatbot_id=chatbot_id).order_by(desc(Feedback.created_at)).all()
@@ -586,19 +589,17 @@ def get_chatbot_feedback(chatbot_id):
     }), 200
 
 
-
 @chatbot_bp.route('/chatbot/all-feedback', methods=['GET'])
-@handle_errors
 def get_all_chatbots_feedback():
-    # Query all chatbots belonging to the current user
-    user_chatbots = Chatbot.query.filter_by(user_id=session['user_id']).all()
+    # Query all chatbots
+    chatbots = Chatbot.query.all()
     
-    if not user_chatbots:
+    if not chatbots:
         return jsonify({"error": "No chatbots found"}), 404
     
     response_data = []
     
-    for chatbot in user_chatbots:
+    for chatbot in chatbots:
         # Query all feedback for each chatbot
         feedback_list = Feedback.query.filter_by(chatbot_id=chatbot.id)\
                               .order_by(desc(Feedback.created_at)).all()
@@ -623,15 +624,48 @@ def get_all_chatbots_feedback():
         }
         response_data.append(chatbot_data)
     
-    print(f"feedback:{response_data}")
     return jsonify({
-        "total_chatbots": len(user_chatbots),
+        "total_chatbots": len(chatbots),
         "chatbots": response_data
     }), 200
 
 
+# @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
+# @login_required
+# @handle_errors
+# def get_chatbot_script(chatbot_id):
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+    
+#     # Generate URLs for the API endpoints
+#     ask_url = url_for('chatbot.chatbot_ask', chatbot_id=chatbot_id, _external=True)
+#     feedback_url = url_for('chatbot.submit_feedback', chatbot_id=chatbot_id, _external=True)
+#     widget_url = url_for('static', filename='js/widget.js', _external=True)
+#     theme_color=""
+#     # ticket_url=url_for('chatbot.create_ticket', chatbot_id=chatbot_id, _external=True )
+    
+#     # Create script tag with the new theme color attribute
+#     integration_code = f'''<!-- you can change the color of the theme used in this chat toggle to be integrated into your website  using hexadecimal color -->
+#     <script 
+#         src="{widget_url}" 
+#         data-chatbot-id="{chatbot_id}" 
+#         data-name="{chatbot.name}" 
+#         data-ask-url="{ask_url}" 
+#         data-feedback-url="{feedback_url}"
+#         data-theme-color="{theme_color}"
+#     ></script>'''
+    
+#     return jsonify({
+#         'integration_code': integration_code,
+#         'preview': integration_code
+#     })
+
+
+
 
 @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
+@login_required
 @handle_errors
 def get_chatbot_script(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
@@ -643,19 +677,171 @@ def get_chatbot_script(chatbot_id):
     feedback_url = url_for('chatbot.submit_feedback', chatbot_id=chatbot_id, _external=True)
     widget_url = url_for('static', filename='js/widget.js', _external=True)
     theme_color=""
+    ticket_url=url_for('chatbot.create_ticket', chatbot_id=chatbot_id, _external=True )
     
     # Create script tag with the new theme color attribute
     integration_code = f'''<!-- you can change the color of the theme used in this chat toggle to be integrated into your website  using hexadecimal color -->
-    <script 
-        src="{widget_url}" 
-        data-chatbot-id="{chatbot_id}" 
-        data-name="{chatbot.name}" 
-        data-ask-url="{ask_url}" 
-        data-feedback-url="{feedback_url}"
-        data-theme-color="{theme_color}"
+   <script 
+    src="{widget_url}"
+    data-chatbot-id="{chatbot_id}"
+    data-name="{chatbot.name}"
+    data-ask-url="{ask_url}"
+    data-feedback-url="{feedback_url}"
+    data-ticket-url="{ticket_url}"
+    data-theme-color="{theme_color}"
     ></script>'''
     
     return jsonify({
         'integration_code': integration_code,
         'preview': integration_code
     })
+
+
+
+
+#----------------------------------------------------------------
+#   NEW IMPLEMENTATION
+#-----------------------------------------------------------------
+
+@chatbot_bp.route('/ticket/create/<chatbot_id>', methods=['POST'])
+def create_ticket(chatbot_id):
+    data = request.json
+    
+    # Ensure the required fields are present
+    if not all(field in data for field in ['subject', 'description', 'account_details']):
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    # If the user is not logged in, use a user_id from the request or generate a guest ID
+    user_id = data.get('user_id')  # Assume user provides their user_id in the request
+    if not user_id:
+        # If no user_id is provided, create a temporary user_id (or a placeholder, like "guest")
+        user_id = 'guest'
+
+    # Create the ticket object
+    new_ticket = Ticket(
+        user_id=user_id,  # Use the provided user_id
+        chatbot_id=chatbot_id,
+        subject=data['subject'],
+        description=data['description'],
+        priority=data.get('priority', 'medium'),
+        account_details=data['account_details']
+    )
+    
+    # Save the ticket to the database
+    db.session.add(new_ticket)
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Ticket created successfully",
+        "ticket_id": new_ticket.id
+    }), 201
+
+
+
+@chatbot_bp.route('/tickets/<chatbot_id>', methods=['GET'])
+def list_tickets1(chatbot_id):
+    # Query tickets filtered by chatbot_id
+    user_tickets = Ticket.query.filter_by(chatbot_id=chatbot_id).all()
+    
+    # Return the filtered tickets
+    return jsonify({
+        "tickets": [{
+            "id": ticket.id,
+            "subject": ticket.subject,
+            "status": ticket.status,
+            "priority": ticket.priority,
+            "created_at": ticket.created_at.isoformat(),
+            "chatbot_id": ticket.chatbot_id,
+            "user_id": ticket.user_id,
+            "account_details": ticket.account_details
+        } for ticket in user_tickets]
+    }), 200
+
+
+@chatbot_bp.route('/tickets', methods=['GET'])
+# @login_required
+def list_tickets():
+    
+    user_tickets = Ticket.query.all()
+    return jsonify({
+        "tickets": [{
+            "id": ticket.id,
+            "subject": ticket.subject,
+            "status": ticket.status,
+            "priority": ticket.priority,
+            "created_at": ticket.created_at.isoformat()
+        } for ticket in user_tickets]
+    }), 200
+
+
+@chatbot_bp.route('/ticket/<ticket_id>', methods=['GET'])
+# @login_required
+# @handle_errors
+def get_ticket(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+    responses = TicketResponse.query.filter_by(ticket_id=ticket_id).all()
+    
+    return jsonify({
+        "ticket": {
+            "id": ticket.id,
+            "subject": ticket.subject,
+            "description": ticket.description,
+            "status": ticket.status,
+            "priority": ticket.priority,
+            "account_details": ticket.account_details,
+            "created_at": ticket.created_at.isoformat()
+        },
+        "responses": [{
+            "id": response.id,
+            "message": response.message,
+            "user_id": response.user_id,
+            "created_at": response.created_at.isoformat()
+        } for response in responses]
+    }), 200
+
+
+
+# @chatbot_bp.route('/ticket/<ticket_id>/update-status', methods=['PATCH'])
+# def update_ticket_status(ticket_id):
+#     data = request.json
+#     if 'status' not in data:
+#         return jsonify({"error": "Status is required"}), 400
+    
+#     ticket = Ticket.query.get_or_404(ticket_id)
+#     ticket.status = data['status']
+#     db.session.commit()
+    
+#     return jsonify({"message": "Ticket status updated successfully"}), 200
+
+
+
+
+@chatbot_bp.route('/ticket/<ticket_id>/update-status', methods=['PATCH'])
+def update_ticket_status(ticket_id):
+    data = request.json
+    if 'status' not in data:
+        return jsonify({"error": "Status is required"}), 400
+    
+    ticket = Ticket.query.get_or_404(ticket_id)
+    ticket.status = data['status']
+    db.session.commit()
+    
+    return jsonify({
+        "message": "Ticket status updated successfully",
+        "ticket": {
+            "id": ticket.id,
+            "status": ticket.status
+        }
+    }), 200
+
+
+
+@chatbot_bp.route('/ticket/delete/<ticket_id>', methods=['DELETE'])
+def delete_ticket(ticket_id):
+    ticket = Ticket.query.get(ticket_id)
+    if not ticket:
+        return jsonify({"error": "Ticket not found"}), 404
+
+    db.session.delete(ticket)
+    db.session.commit()
+    return jsonify({"message": "Ticket deleted successfully"}), 200

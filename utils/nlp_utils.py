@@ -104,32 +104,54 @@ def preprocess_data(pdf_data, folder_data, web_data):
 
 
 
+def generate_answer(question, relevant_info, max_length=500):
+    # Combine all relevant information into a single context
+    context = " ".join(relevant_info)
 
-# def generate_answer(question, relevant_info, max_length=150):
-#     # Combine all relevant information into a single context
-#     context = " ".join(relevant_info)
-    
-#     try:
-#         # Prepare messages for the chat model
-#         messages = [
-#             {"role": "system", "content": "You are a helpful assistant that answers questions based on the given context but you are concise and helpful and answer questions in a friendly manner."},
-#             {"role": "user", "content": f"Context: {context}\n\nQuestion: {question}"}
-#         ]
-        
-#         # Use Hugging Face's chat completion
-#         response = huggingface_client.chat.completions.create(
-#             model="HuggingFaceH4/zephyr-7b-beta",  # You can change this to another chat model
-#             messages=messages,
-#             temperature=0.1,
-#             max_tokens=75  # Adjust as needed
-#         )
-        
-#         # Extract the text from the response
-#         return response.choices[0].message.content
-    
-#     except Exception as e:
-#         logging.error(f"Error generating answer: {str(e)}")
-#         return "I apologize, but I encountered an issue while processing your question."
+    try:
+        # Prepare messages for the chat model
+        # messages = [
+        #     {"role": "system", "content": "You are a helpful assistant that answers questions based on the given context but you are concise and helpful and answer questions in a friendly manner."},
+        #     {"role": "user", "content": f"Context: {context}\n\nQuestion: {question}"}
+        # ]
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a knowledgeable assistant providing clear, accurate answers. Follow these rules:\n"
+                    "1. Use the context information naturally without referencing it\n"
+                    "2. If the information isn't available, simply state 'I don't have enough information to answer that'\n"
+                    "3. Keep responses under {max_length} characters\n"
+                    "4. Write in a natural, conversational tone\n"
+                    "5. Start responses directly without phrases like 'Based on...'\n"
+                    "6. Be friendly and helpful"
+                )
+            },
+            {
+                "role": "user",
+                "content": f"Context: {context}\n\nQuestion: {question}"
+            }
+        ]
+
+        # Use Hugging Face's chat completion
+        response = huggingface_client.chat.completions.create(
+            model="HuggingFaceH4/zephyr-7b-beta",  # You can change this to another chat model
+            messages=messages,
+            temperature=0.1,
+            max_tokens=500  # Adjust as needed
+        )
+
+        # Extract the text from the response
+        return response.choices[0].message.content
+
+    except Exception as e:
+        logging.error(f"Error generating answer: {str(e)}")
+        return "I apologize, but I encountered an issue while processing your question."
+
+
+
+
 
 from rank_bm25 import BM25Okapi
 import numpy as np
@@ -148,66 +170,67 @@ def prepare_bm25_index(documents: List[str]) -> BM25Okapi:
     """
     Prepare BM25 index from a list of documents.
     """
-    # Tokenize documents
     tokenized_documents = [word_tokenize(doc.lower()) for doc in documents]
-    # Create BM25 index
     return BM25Okapi(tokenized_documents)
 
 def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, top_k: int = 3) -> List[str]:
     """
     Retrieve the most relevant passages using BM25 scoring.
     """
-    # Tokenize the question
     tokenized_question = word_tokenize(question.lower())
-    
-    # Get BM25 scores for all documents
     scores = bm25.get_scores(tokenized_question)
-    
-    # Get top-k document indices
     top_indices = np.argsort(scores)[-top_k:][::-1]
-    
-    # Return the top-k documents
     return [documents[i] for i in top_indices]
 
-def generate_answer(question: str, documents: List[str], max_length: int = 150) -> str:
+
+
+def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 5000) -> str:
     """
-    Generate an answer using BM25 ranking and language model.
+    Generate an answer based on the question and context, using passage retrieval only for large contexts.
+    
+    Args:
+        question: The question to answer
+        documents: List of document passages
+        max_length: Maximum length of the generated answer
+        context_threshold: Character threshold above which to use passage retrieval
     """
     try:
-        # Create BM25 index
-        bm25 = prepare_bm25_index(documents)
+        # Calculate total context length
+        total_context_length = sum(len(doc) for doc in documents)
         
-        # Get relevant passages
-        relevant_info = get_relevant_passages(question, documents, bm25)
-        
-        # Combine relevant information into context
-        context = " ".join(relevant_info)
-        
-        # Prepare messages for the chat model
+        # Determine whether to use passage retrieval
+        if total_context_length > context_threshold:
+            # Use BM25 for large contexts
+            bm25 = prepare_bm25_index(documents)
+            relevant_info = get_relevant_passages(question, documents, bm25)
+            context = " ".join(relevant_info)
+        else:
+            # Use full context for smaller documents
+            context = " ".join(documents)
+
         messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that answers questions based on the given context but you are concise and helpful and answer questions in a friendly manner."
-            },
-            {
-                "role": "user",
-                "content": f"Context: {context}\n\nQuestion: {question}"
-            }
+            {"role": "system", "content": "You are a helpful assistant that answers questions based on the given context but you are concise and helpful and answer questions in a friendly manner Start responses directly without phrases like 'Based on, Response..."},
+            {"role": "user", "content": f"Context: {context}\n\nQuestion: {question}"}
         ]
         
-        # Use Hugging Face's chat completion
         response = huggingface_client.chat.completions.create(
             model="HuggingFaceH4/zephyr-7b-beta",
             messages=messages,
             temperature=0.1,
-            max_tokens=250
+            max_tokens=500
         )
         
         return response.choices[0].message.content
-
+    
     except Exception as e:
         logging.error(f"Error generating answer: {str(e)}")
         return "I apologize, but I encountered an issue while processing your question."
+
+
+
+
+
+
 
 
 def get_general_answer(data, question):

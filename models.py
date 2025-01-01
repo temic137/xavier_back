@@ -34,10 +34,6 @@ class Feedback(db.Model):
     created_at = db.Column(db.DateTime)
 
 
-
-
-
-
 class QuestionAnalytics(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     chatbot_id = db.Column(db.String(36), db.ForeignKey('chatbot.id'), nullable=False)
@@ -48,7 +44,31 @@ class QuestionAnalytics(db.Model):
     question_metadata = db.Column(db.JSON) 
 
 
+#------------------------------------------------
+# START  OF NEW MODELS
+#----------------------------------------------
+class Ticket(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    chatbot_id = db.Column(db.String(36), db.ForeignKey('chatbot.id'), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='open')
+    priority = db.Column(db.String(20), default='medium')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    account_details = db.Column(db.JSON)
 
+class TicketResponse(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+#----------------------------------------
+# END OF NEW MODELS
+#------------------------------------------
 
 
 from extensions import db

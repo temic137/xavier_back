@@ -1,4 +1,3 @@
-// widget.js
 (function() {
     // Get configuration from script tag
     const script = document.currentScript;
@@ -7,13 +6,14 @@
         name: script.getAttribute('data-name') || 'Support Agent',
         askUrl: script.getAttribute('data-ask-url'),
         feedbackUrl: script.getAttribute('data-feedback-url'),
-        avatar: script.getAttribute('data-avatar') || 'https://via.placeholder.com/40',
+        ticketUrl: script.getAttribute('data-ticket-url'),
+        avatar: script.getAttribute('data-avatar') || 'static\js\agent.png',
         themeColor: script.getAttribute('data-theme-color') || '#0066CC'
     };
 
     // Styles
     const styles = `
-       .chatbot-container {
+        .chatbot-container {
             position: fixed;
             bottom: 20px;
             right: 20px;
@@ -68,6 +68,7 @@
             overflow: hidden;
             height: 480px;
             flex-direction: column;
+            position: relative;
         }
 
         .chatbot-content.chatbot-visible {
@@ -76,46 +77,65 @@
 
         .chatbot-header {
             padding: 20px;
-            background:  ${config.themeColor};
+            background: ${config.themeColor};
             border-bottom: 1px solid #eee;
             color: #FFFFFF;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 12px;
             position: relative;
         }
 
-        .chatbot-header-actions {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            display: flex;
-            gap: 8px;
-        }
-
-        .chatbot-feedback-trigger {
-            background: none;
-            border: none;
-            color: #FFFFFF;
-            cursor: pointer;
-            padding: 4px 8px;
-            font-size: 14px;
-            border-radius: 4px;
+        .chatbot-header-info {
             display: flex;
             align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .chatbot-header-text {
+            display: flex;
+            flex-direction: column;
             gap: 4px;
         }
 
+        .chatbot-header-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .chatbot-feedback-trigger {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #FFFFFF;
+            cursor: pointer;
+            padding: 8px 12px;
+            font-size: 14px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 140px;
+            transition: background-color 0.2s ease;
+        }
+
         .chatbot-feedback-trigger:hover {
-            background: #f1f1f1;
-            color: #333;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .chatbot-feedback-trigger span:last-child {
+            margin-left: 4px;
         }
 
         .chatbot-close-chat {
+            position: absolute;
+            top: 8px;
+            right: 8px;
             background: none;
             border: none;
-            color: #f1f1f1;
+            color: #FFFFFF;
             font-size: 24px;
             cursor: pointer;
             padding: 4px;
@@ -125,12 +145,11 @@
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease;
         }
 
         .chatbot-close-chat:hover {
-            background:#FFFFFF;
-            color: #333;
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .chatbot-status-dot {
@@ -172,7 +191,7 @@
             word-wrap: break-word;
         }
 
-         .chatbot-message.user {
+        .chatbot-message.user {
             background: ${config.themeColor};
             color: white;
             margin-left: auto;
@@ -226,7 +245,7 @@
             color: #6b7280;
         }
 
-       .chatbot-send {
+        .chatbot-send {
             background: none;
             border: none;
             color: ${config.themeColor};
@@ -258,7 +277,7 @@
 
         .chatbot-typing {
             padding: 12px 16px;
-            background: #F5F5F5 ;
+            background: #F5F5F5;
             border-radius: 12px;
             border-bottom-left-radius: 4px;
             display: inline-block;
@@ -289,7 +308,82 @@
             animation-delay: 0.4s;
         }
 
-        /* Feedback Modal Styles */
+        .chatbot-ticket-form {
+            display: none;
+            padding: 20px;
+            background: white;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 2;
+            overflow-y: auto;
+        }
+
+        .chatbot-ticket-form.chatbot-visible {
+            display: block;
+        }
+
+        .chatbot-ticket-form h3 {
+            margin: 0 0 16px 0;
+            color: ${config.themeColor};
+            font-size: 18px;
+        }
+
+        .chatbot-form-group {
+            margin-top:2px;
+            margin-bottom: 16px;
+        }
+
+        .chatbot-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .chatbot-form-group input,
+        .chatbot-form-group textarea,
+        .chatbot-form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .chatbot-form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .chatbot-ticket-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chatbot-ticket-submit,
+        .chatbot-ticket-cancel {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s ease;
+        }
+
+        .chatbot-ticket-submit {
+            background: ${config.themeColor};
+            color: white;
+        }
+
+        .chatbot-ticket-cancel {
+            background: #e1e1e1;
+            color: #333;
+        }
+
         .chatbot-feedback-modal {
             display: none;
             position: fixed;
@@ -327,14 +421,13 @@
             height: 120px;
             padding: 12px;
             margin-bottom: 16px;
-            border-width: 0.3px;
-            border-color: ${config.themeColor};
+            border: 1px solid ${config.themeColor};
             border-radius: 8px;
             font-size: 14px;
             resize: vertical;
         }
 
-        .chatbot-feedback-content textarea:focus {
+         .chatbot-feedback-content textarea:focus {
             
             border-color: ${config.themeColor};
         }
@@ -417,22 +510,30 @@
             
             <div id="chatbot-content" class="chatbot-content">
                 <div class="chatbot-header">
-                    <img src="${config.avatar}" class="chatbot-avatar" alt="${config.name}">
-                    <div>
-                        <div style="font-weight: 600">${config.name}</div>
-                        <div style="font-size: 14px; color: #FFFFFF">
-                            <span class="chatbot-status-dot"></span>Online
+                    <div class="chatbot-header-info">
+                        <img src="${config.avatar}" class="chatbot-avatar" alt="${config.name}">
+                        <div class="chatbot-header-text">
+                            <div style="font-weight: 600">${config.name}</div>
+                            <div style="font-size: 14px;">
+                                <span class="chatbot-status-dot"></span>Online
+                            </div>
                         </div>
                     </div>
+                
                     <div class="chatbot-header-actions">
+                        <button class="chatbot-feedback-trigger" onclick="window.chatbotWidget.openTicketForm()">
+                            <span>Create Ticket</span>
+                            <span>🎫</span>
+                        </button>
                         <button class="chatbot-feedback-trigger" onclick="window.chatbotWidget.openFeedback()">
                             <span>Feedback</span>
                             <span>💬</span>
                         </button>
-                        <button class="chatbot-close-chat" onclick="window.chatbotWidget.toggle()">×</button>
                     </div>
+                    
+                    <button class="chatbot-close-chat" onclick="window.chatbotWidget.toggle()">×</button>
                 </div>
-                
+                        
                 <div id="chatbot-messages" class="chatbot-messages">
                     <div class="chatbot-message bot">
                         Hi there! 👋 How can I help you today?
@@ -452,12 +553,45 @@
                                 <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2"/>
                             </svg>
                         </button>
-                          </div>
+                    </div>
                 </div>
                 
                 <div class="powered-by">Powered by Xavier AI</div>
+
+                <!-- Ticket Form -->
+                <div id="chatbot-ticket-form" class="chatbot-ticket-form">
+                    <h3>Create Support Ticket</h3>
+                    <h5>(It might take sometime to get a response)</h5>
+                    <div class="chatbot-form-group">
+                        <label for="ticket-subject">Subject</label>
+                        <input type="text" id="ticket-subject" required>
+                    </div>
+                    <div class="chatbot-form-group">
+                        <label for="ticket-description">Description</label>
+                        <textarea id="ticket-description" required></textarea>
+                    </div>
+                    <div class="chatbot-form-group">
+                        <label for="ticket-priority">Priority</label>
+                        <select id="ticket-priority">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="chatbot-form-group">
+                        <label for="ticket-account">Account Details</label>
+                        <input type="text" id="ticket-account" required>
+                    </div>
+                    <div class="chatbot-ticket-actions">
+                        <button onclick="window.chatbotWidget.submitTicket()" 
+                                class="chatbot-ticket-submit">Submit Ticket</button>
+                        <button onclick="window.chatbotWidget.closeTicketForm()" 
+                                class="chatbot-ticket-cancel">Cancel</button>
+                    </div>
+                </div>
             </div>
 
+            <!-- Feedback Modal -->
             <div id="chatbot-feedback" class="chatbot-feedback-modal">
                 <div class="chatbot-feedback-content">
                     <h3>Provide Feedback</h3>
@@ -610,6 +744,67 @@
             }
         },
 
+        openTicketForm() {
+            document.getElementById('chatbot-ticket-form').classList.add('chatbot-visible');
+        },
+
+        closeTicketForm() {
+            document.getElementById('chatbot-ticket-form').classList.remove('chatbot-visible');
+            // Reset form
+            document.getElementById('ticket-subject').value = '';
+            document.getElementById('ticket-description').value = '';
+            document.getElementById('ticket-priority').value = 'medium';
+            document.getElementById('ticket-account').value = '';
+        },
+
+        async submitTicket() {
+            const subject = document.getElementById('ticket-subject').value.trim();
+            const description = document.getElementById('ticket-description').value.trim();
+            const priority = document.getElementById('ticket-priority').value;
+            const accountDetails = document.getElementById('ticket-account').value.trim();
+
+            if (!subject || !description || !accountDetails) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            try {
+                const response = await fetch(config.ticketUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-ID': this.userId
+                    },
+                    body: JSON.stringify({
+                        subject,
+                        description,
+                        priority,
+                        account_details: accountDetails
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create ticket');
+                }
+
+                const data = await response.json();
+                
+                // Add success message to chat
+                const messages = document.getElementById('chatbot-messages');
+                messages.innerHTML += `
+                    <div class="chatbot-message bot">
+                        Ticket created successfully! Your ticket ID is: ${data.ticket_id}
+                    </div>
+                `;
+                messages.scrollTop = messages.scrollHeight;
+
+                this.closeTicketForm();
+            } catch (error) {
+                console.error('Ticket creation error:', error);
+                alert('Sorry, we couldn\'t create your ticket. Please try again.');
+            }
+        },
+
         escapeHtml(unsafe) {
             return unsafe
                 .replace(/&/g, "&amp;")
@@ -623,7 +818,7 @@
     // Add event listeners
     document.getElementById('chatbot-toggle').onclick = () => window.chatbotWidget.toggle();
     
-    // Enable/disable send button based on input
+    // Add event listeners
     const input = document.getElementById('chatbot-input');
     const sendButton = document.getElementById('chatbot-send');
     
