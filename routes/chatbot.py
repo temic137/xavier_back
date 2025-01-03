@@ -287,10 +287,12 @@ def train_chatbot(chatbot_id):
             try:
                 if file_extension == '.pdf':
                     pdf_text = extract_text_from_pdf(filepath)
-                    pdf_data.extend(pdf_text)
+                    pdf_data.append(pdf_text)
+                    print(f"data:{pdf_data}")
                 elif file_extension in ['.txt', '.md', '.rst']:
                     raw_text = read_text_file(filepath)
                     pdf_data.append({'page': 'file', 'text': raw_text})
+                    
                 else:
                     return jsonify({"error": f"Unsupported file type: {file_extension}"}), 400
             except Exception as e:
@@ -589,6 +591,10 @@ def get_chatbot_feedback(chatbot_id):
     }), 200
 
 
+
+
+
+
 @chatbot_bp.route('/chatbot/all-feedback', methods=['GET'])
 def get_all_chatbots_feedback():
     # Query all chatbots
@@ -628,6 +634,10 @@ def get_all_chatbots_feedback():
         "total_chatbots": len(chatbots),
         "chatbots": response_data
     }), 200
+
+
+
+
 
 
 # @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
@@ -678,9 +688,10 @@ def get_chatbot_script(chatbot_id):
     widget_url = url_for('static', filename='js/widget.js', _external=True)
     theme_color=""
     ticket_url=url_for('chatbot.create_ticket', chatbot_id=chatbot_id, _external=True )
-    
+    avatar=""
     # Create script tag with the new theme color attribute
-    integration_code = f'''<!-- you can change the color of the theme used in this chat toggle to be integrated into your website  using hexadecimal color -->
+    integration_code = f'''<!-- you can change the color of the theme used in this chat toggle to be integrated into your website  with hexadecimal color -->
+    <!-- you can also change the default image of the avatar used in the chatbot widget by changing the data-avatar variable an image   -->
    <script 
     src="{widget_url}"
     data-chatbot-id="{chatbot_id}"
@@ -689,6 +700,7 @@ def get_chatbot_script(chatbot_id):
     data-feedback-url="{feedback_url}"
     data-ticket-url="{ticket_url}"
     data-theme-color="{theme_color}"
+    data-avatar="{avatar}"
     ></script>'''
     
     return jsonify({
@@ -739,6 +751,8 @@ def create_ticket(chatbot_id):
 
 
 @chatbot_bp.route('/tickets/<chatbot_id>', methods=['GET'])
+@login_required
+@handle_errors
 def list_tickets1(chatbot_id):
     # Query tickets filtered by chatbot_id
     user_tickets = Ticket.query.filter_by(chatbot_id=chatbot_id).all()
@@ -817,6 +831,8 @@ def get_ticket(ticket_id):
 
 
 @chatbot_bp.route('/ticket/<ticket_id>/update-status', methods=['PATCH'])
+@login_required
+@handle_errors
 def update_ticket_status(ticket_id):
     data = request.json
     if 'status' not in data:
@@ -837,6 +853,8 @@ def update_ticket_status(ticket_id):
 
 
 @chatbot_bp.route('/ticket/delete/<ticket_id>', methods=['DELETE'])
+@login_required
+@handle_errors
 def delete_ticket(ticket_id):
     ticket = Ticket.query.get(ticket_id)
     if not ticket:

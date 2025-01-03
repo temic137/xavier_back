@@ -7,7 +7,7 @@
         askUrl: script.getAttribute('data-ask-url'),
         feedbackUrl: script.getAttribute('data-feedback-url'),
         ticketUrl: script.getAttribute('data-ticket-url'),
-        avatar: script.getAttribute('data-avatar') || 'static\js\agent.png',
+        avatar: script.getAttribute('data-avatar') || './assets/agent.png',
         themeColor: script.getAttribute('data-theme-color') || '#0066CC'
     };
 

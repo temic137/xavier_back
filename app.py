@@ -179,10 +179,13 @@ def create_app():
     #     response.headers.add('Access-Control-Expose-Headers', 'Content-Type,Authorization,X-CSRFToken')
     #     return response
     
+    
     return app
 
 # Create the app instance for Gunicorn
 app = create_app()
+
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
