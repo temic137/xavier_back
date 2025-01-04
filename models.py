@@ -7,8 +7,8 @@ from sqlalchemy import Text
 from sqlalchemy.dialects import postgresql
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
+    username = db.Column(db.String(128), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)  # Increase length
     chatbots = db.relationship('Chatbot', backref='owner', lazy=True)
     feedbacks = db.relationship('Feedback', backref='user', lazy=True)
 
