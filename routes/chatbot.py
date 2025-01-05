@@ -522,31 +522,70 @@ def transcribe_audio_file(file_path):
     return None
 
 
-@chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
+# @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['POST', 'OPTIONS'])
+# def submit_feedback(chatbot_id):
+#     if request.method == 'OPTIONS':
+#         return '', 204
+    
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     data = request.json
+#     feedback_text = data.get('feedback')
+#     user_id = request.headers.get('User-ID')  # Retrieve the user ID
+
+#     user_id = data.get('user_id')  # Assume user provides their user_id in the request
+#     if not user_id:
+#         # If no user_id is provided, create a temporary user_id (or a placeholder, like "guest")
+#         user_id = '4269'
+#     if not feedback_text:
+#         return "Feedback is missing", 400
+
+#     if not feedback_text:
+#         return jsonify({"error": "No feedback provided"}), 400
+#     if not user_id:
+#         return jsonify({"error": "User ID is missing"}), 400  # Ensure User-ID is present
+
+#     try:
+#         new_feedback = Feedback(
+#             chatbot_id=chatbot_id,
+#             user_id=user_id,  # Ensure this is an integer or correct type as per your DB schema
+#             feedback=feedback_text,
+#             created_at=datetime.utcnow()
+#         )
+#         db.session.add(new_feedback)
+#         db.session.commit()
+#         return jsonify({"message": "Feedback submitted successfully"}), 200
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in submit_feedback: {str(e)}")
+#         return jsonify({"error": "An error occurred while saving the feedback"}), 500
+
+
+@chatbot_bp.route('/chatbot/feedback', methods=['POST', 'OPTIONS'])
 def submit_feedback(chatbot_id):
     if request.method == 'OPTIONS':
         return '', 204
-    
+        
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
         return jsonify({"error": "Chatbot not found"}), 404
-
+        
     data = request.json
     feedback_text = data.get('feedback')
-    user_id = request.headers.get('User-ID')  # Retrieve the user ID
-
-    if not feedback_text:
-        return "Feedback is missing", 400
-
     if not feedback_text:
         return jsonify({"error": "No feedback provided"}), 400
+        
+    # Get user_id from either headers or request data
+    user_id = request.headers.get('User-ID') or data.get('user_id')
     if not user_id:
-        return jsonify({"error": "User ID is missing"}), 400  # Ensure User-ID is present
-
+        user_id = '4269'  # Default user_id
+        
     try:
         new_feedback = Feedback(
             chatbot_id=chatbot_id,
-            user_id=user_id,  # Ensure this is an integer or correct type as per your DB schema
+            user_id=user_id,
             feedback=feedback_text,
             created_at=datetime.utcnow()
         )
@@ -557,6 +596,7 @@ def submit_feedback(chatbot_id):
         db.session.rollback()
         current_app.logger.error(f"Database error in submit_feedback: {str(e)}")
         return jsonify({"error": "An error occurred while saving the feedback"}), 500
+
 
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/feedback', methods=['GET'])
@@ -715,6 +755,40 @@ def get_chatbot_script(chatbot_id):
 #   NEW IMPLEMENTATION
 #-----------------------------------------------------------------
 
+# @chatbot_bp.route('/ticket/create/<chatbot_id>', methods=['POST'])
+# def create_ticket(chatbot_id):
+#     data = request.json
+    
+#     # Ensure the required fields are present
+#     if not all(field in data for field in ['subject', 'description', 'account_details']):
+#         return jsonify({"error": "Missing required fields"}), 400
+    
+#     # If the user is not logged in, use a user_id from the request or generate a guest ID
+#     user_id = data.get('user_id')  # Assume user provides their user_id in the request
+#     if not user_id:
+#         # If no user_id is provided, create a temporary user_id (or a placeholder, like "guest")
+#         user_id = '4269'
+
+#     # Create the ticket object
+#     new_ticket = Ticket(
+#         user_id=user_id,  # Use the provided user_id
+#         chatbot_id=chatbot_id,
+#         subject=data['subject'],
+#         description=data['description'],
+#         priority=data.get('priority', 'medium'),
+#         account_details=data['account_details']
+#     )
+    
+#     # Save the ticket to the database
+#     db.session.add(new_ticket)
+#     db.session.commit()
+    
+#     return jsonify({
+#         "message": "Ticket created successfully",
+#         "ticket_id": new_ticket.id
+#     }), 201
+
+
 @chatbot_bp.route('/ticket/create/<chatbot_id>', methods=['POST'])
 def create_ticket(chatbot_id):
     data = request.json
@@ -723,15 +797,12 @@ def create_ticket(chatbot_id):
     if not all(field in data for field in ['subject', 'description', 'account_details']):
         return jsonify({"error": "Missing required fields"}), 400
     
-    # If the user is not logged in, use a user_id from the request or generate a guest ID
-    user_id = data.get('user_id')  # Assume user provides their user_id in the request
-    if not user_id:
-        # If no user_id is provided, create a temporary user_id (or a placeholder, like "guest")
-        user_id = 'guest'
-
+    # Get user_id from request or use default
+    user_id = data.get('user_id', '4269')
+    
     # Create the ticket object
     new_ticket = Ticket(
-        user_id=user_id,  # Use the provided user_id
+        user_id=user_id,
         chatbot_id=chatbot_id,
         subject=data['subject'],
         description=data['description'],
@@ -739,14 +810,18 @@ def create_ticket(chatbot_id):
         account_details=data['account_details']
     )
     
-    # Save the ticket to the database
-    db.session.add(new_ticket)
-    db.session.commit()
-    
-    return jsonify({
-        "message": "Ticket created successfully",
-        "ticket_id": new_ticket.id
-    }), 201
+    try:
+        db.session.add(new_ticket)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Ticket created successfully",
+            "ticket_id": new_ticket.id
+        }), 201
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Database error in create_ticket: {str(e)}")
+        return jsonify({"error": "An error occurred while creating the ticket"}), 500
 
 
 
