@@ -715,39 +715,69 @@ def get_chatbot_script(chatbot_id):
 #   NEW IMPLEMENTATION
 #-----------------------------------------------------------------
 
+# @chatbot_bp.route('/ticket/create/<chatbot_id>', methods=['POST'])
+# def create_ticket(chatbot_id):
+#     data = request.json
+    
+#     # Ensure the required fields are present
+#     if not all(field in data for field in ['subject', 'description', 'account_details']):
+#         return jsonify({"error": "Missing required fields"}), 400
+    
+#     # If the user is not logged in, use a user_id from the request or generate a guest ID
+#     user_id = data.get('user_id')  # Assume user provides their user_id in the request
+#     if not user_id:
+#         # If no user_id is provided, create a temporary user_id (or a placeholder, like "guest")
+#         user_id = 'guest'
+
+#     # Create the ticket object
+#     new_ticket = Ticket(
+#         user_id=user_id,  # Use the provided user_id
+#         chatbot_id=chatbot_id,
+#         subject=data['subject'],
+#         description=data['description'],
+#         priority=data.get('priority', 'medium'),
+#         account_details=data['account_details']
+#     )
+    
+#     # Save the ticket to the database
+#     db.session.add(new_ticket)
+#     db.session.commit()
+    
+#     return jsonify({
+#         "message": "Ticket created successfully",
+#         "ticket_id": new_ticket.id
+#     }), 201
+
+
 @chatbot_bp.route('/ticket/create/<chatbot_id>', methods=['POST'])
 def create_ticket(chatbot_id):
     data = request.json
-    
-    # Ensure the required fields are present
+
+    # Check required fields
     if not all(field in data for field in ['subject', 'description', 'account_details']):
         return jsonify({"error": "Missing required fields"}), 400
-    
-    # If the user is not logged in, use a user_id from the request or generate a guest ID
-    user_id = data.get('user_id')  # Assume user provides their user_id in the request
-    if not user_id:
-        # If no user_id is provided, create a temporary user_id (or a placeholder, like "guest")
-        user_id = 'guest'
 
-    # Create the ticket object
+    # Create the ticket with default user_id
     new_ticket = Ticket(
-        user_id=user_id,  # Use the provided user_id
+        user_id=4269,  # Always use the default user
         chatbot_id=chatbot_id,
         subject=data['subject'],
         description=data['description'],
         priority=data.get('priority', 'medium'),
         account_details=data['account_details']
     )
-    
-    # Save the ticket to the database
-    db.session.add(new_ticket)
-    db.session.commit()
-    
-    return jsonify({
-        "message": "Ticket created successfully",
-        "ticket_id": new_ticket.id
-    }), 201
 
+    try:
+        db.session.add(new_ticket)
+        db.session.commit()
+        return jsonify({
+            "message": "Ticket created successfully",
+            "ticket_id": new_ticket.id
+        }), 201
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Database error in create_ticket: {str(e)}")
+        return jsonify({"error": "An error occurred while creating the ticket"}), 500
 
 
 @chatbot_bp.route('/tickets/<chatbot_id>', methods=['GET'])
