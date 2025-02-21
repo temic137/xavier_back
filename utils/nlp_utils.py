@@ -16,6 +16,8 @@ import faiss
 import numpy as np
 import torch
 from huggingface_hub import InferenceClient
+import datetime
+import random
 
 nltk.download('stopwords')
 lemmatizer = WordNetLemmatizer()
@@ -36,6 +38,9 @@ cohere_client = cohere.Client(api_key=cohere_token)
 
 # Replace the Cohere client initialization
 huggingface_client = InferenceClient(api_key=huggingface_token)
+
+# Get Groq API key from environment
+groq_token = os.getenv('GROQ_API_KEY')
 
 def preprocess_text(text):
     # The existing preprocessing remains the same
@@ -104,60 +109,6 @@ def preprocess_data(pdf_data, folder_data, web_data):
 
 
 
-# def generate_answer(question, relevant_info, max_length=500):
-#     # Combine all relevant information into a single context
-#     context = " ".join(relevant_info)
-
-#     try:
-       
-#         # messages = [
-#         #     {
-#         #         "role": "system",
-#         #         "content": """You are Alex, a customer service representative who provides brief, helpful responses. Follow these guidelines:
-
-#         # Response Structure:
-#         # - Keep total response under 100 words
-#         # - Use short, clear sentences
-#         # - Focus on answering the immediate question
-#         # - Avoid unnecessary pleasantries and marketing language
-
-#         # Style:
-#         # - Be friendly but direct
-#         # - Use natural, conversational language
-#         # - Answer questions directly before offering additional help
-#         # - Skip lengthy introductions
-
-#         # Format:
-#         # - Greeting: One short line
-#         # - Answer: 2-3 focused sentences
-#         # - Close: One line with clear next step if needed"""
-#         #     },
-#         #     {
-#         #         "role": "user",
-#         #         "content": f"""Context: {context}
-#         # Question: {question}
-
-#         # Provide a concise, helpful response that directly addresses the question."""
-#         #     }
-#         # ]
-
-
-#         # Use Hugging Face's chat completion
-#         response = huggingface_client.chat.completions.create(
-#             model="HuggingFaceH4/zephyr-7b-beta",  # You can change this to another chat model
-#             messages=messages,
-#             temperature=0.1,
-#             max_tokens=500  # Adjust as needed
-#         )
-
-#         # Extract the text from the response
-#         return response.choices[0].message.content
-
-#     except Exception as e:
-#         logging.error(f"Error generating answer: {str(e)}")
-#         return "I apologize, but I encountered an issue while processing your question."
-
-
 
 
 
@@ -192,9 +143,11 @@ def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, 
 
 
 
+
+
 # def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 4000) -> str:
 #     """
-#     Generate an answer based on the question and context, using passage retrieval only for large contexts.
+#     Generate an answer based on the question and context, with dynamic response length depending on complexity.
     
 #     Args:
 #         question: The question to answer
@@ -215,43 +168,53 @@ def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, 
 #         else:
 #             # Use full context for smaller documents
 #             context = " ".join(documents)
-
-#         # messages = [
-#         #     {"role": "system", "content": "You are a helpful assistant that answers questions based on the given context but you are concise and helpful and answer questions in a friendly manner Start responses directly without phrases like 'Based on, Response..."},
-#         #     {"role": "user", "content": f"Context: {context}\n\nQuestion: {question}"}
-#         # ]
-
+        
 #         print(f"context: {context}")
+        
+#         # Keywords that might indicate need for detailed response
+#         detail_indicators = [
+#             # "explain", "describe", "elaborate", "details", "how does", "how do",
+#         ]
+        
+#         # Check if question requires detailed response
+#         needs_detail = any(indicator in question.lower() for indicator in detail_indicators)
+        
+#         system_content = """You are a helpful assistant that provides clear, natural responses. Follow these guidelines:
+# 1. Adapt your response length to the question:
+#    - For simple questions, be brief and direct
+#    - For complex questions, provide comprehensive explanations
+# 2. When detailed information is requested:
+#    - Include relevant examples
+#    - Break down complex concepts
+#    - Provide step-by-step explanations when appropriate
+# 3. For basic questions:
+#    - Keep responses concise
+#    - Focus on key points only
+# 4. Always:
+#    - Use natural language
+#    - Stay relevant to the question
+#    - Organize information logically
+#    - Avoid unnecessary repetition"""
+        
 #         messages = [
-#         {
-#             "role": "system",
-#             "content": """You are  a customer service representative who provides brief, helpful responses. Follow these guidelines:
+#             {
+#                 "role": "system",
+#                 "content": system_content
+#             },
+#             {
+#                 "role": "user",
+#                 "content": f"""Context: {context}
 
-#     Response Structure:
-#     - Use short, clear sentences
-#     - Avoid unnecessary pleasantries and marketing language
+# Question: {question}
 
-#     Style:
-#     - Be friendly but direct
-#     - Use natural, conversational language
-#     - Answer questions directly before offering additional help
-#     - Skip lengthy introductions
-
-#         """
-#         },
-#         {
-#             "role": "user",
-#             "content": f"""Context: {context}
-#     Question: {question}
-
-#     Provide a concise, helpful response that directly addresses the question and Important: Only use information from the context above. If you're not sure or if the information isn't in the context, please say so. """
-#         }
-#     ]
+# Response type: {"detailed" if needs_detail else "concise"}"""
+#             }
+#         ]
         
 #         response = huggingface_client.chat.completions.create(
-#             model="HuggingFaceH4/zephyr-7b-beta",
+#             model="mistralai/Mistral-7B-Instruct-v0.2",
 #             messages=messages,
-#             temperature=0.1,
+#             temperature=0.5,
 #             max_tokens=500
 #         )
         
@@ -259,8 +222,8 @@ def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, 
     
 #     except Exception as e:
 #         logging.error(f"Error generating answer: {str(e)}")
-#         return "I apologize, but I encountered an issue while processing your question."
-
+#         return "Sorry, I ran into an issue processing your question."
+    
 
 
 # def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 4000) -> str:
@@ -274,7 +237,7 @@ def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, 
 #         context_threshold: Character threshold above which to use passage retrieval
 #     """
 #     try:
-#         # Calculate total context length
+        
 #         total_context_length = sum(len(doc) for doc in documents)
 
 #         # Determine whether to use passage retrieval
@@ -287,42 +250,40 @@ def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, 
 #             # Use full context for smaller documents
 #             context = " ".join(documents)
 
-#         # messages = [
-#         #     {"role": "system", "content": "You are a helpful assistant that answers questions based on the given context but you are concise and helpful and answer questions in a friendly manner Start responses directly without phrases like 'Based on, Response..."},
-#         #     {"role": "user", "content": f"Context: {context}\n\nQuestion: {question}"}
-#         # ]
-
 #         print(f"context: {context}")
 #         messages = [
-#         {
-#             "role": "system",
-#             "content": """You are  a customer service representative who provides brief, helpful responses. Follow these guidelines:
+#             {
+#                 "role": "system",
+#                 "content": """You are a customer service representative providing helpful, direct, and concise responses. Follow these guidelines:
 
-#     Response Structure:
-#     - Use short, clear sentences
-#     - Avoid unnecessary pleasantries and marketing language
+# Response Structure:
+# - Do not include the word 'Response:' or similar phrases in your answers
+# - Keep answers short and clear
+# - Focus only on what is necessary to answer the question
+# - Use natural, conversational language
+# - Directly address the question first
+# - Skip unnecessary pleasantries and marketing language
+# - Avoid lengthy introductions, provide answers immediately
 
-#     Style:
-#     - Be friendly but direct
-#     - Use natural, conversational language
-#     - Answer questions directly before offering additional help
-#     - Skip lengthy introductions
+# Additional Guidance:
+# - If the information is not found in the context, say 'I'm sorry, I don't have that information.'
+# - If the response requires follow-up or clarification, suggest the next step clearly."""
 
-#         """
-#         },
-#         {
-#             "role": "user",
-#             "content": f"""Context: {context}
+#             },
+#             {
+#                 "role": "user",
+#                 "content": f"""Context: {context}
 #     Question: {question}
 
-#     Provide a concise, helpful response that directly addresses the question and Important: Only use information from the context above. If you're not sure or if the information isn't in the context, please say so. """
-#         }
-#     ]
+#     Provide a precise and helpful response based on the context above. Only use the information provided. If unsure, say 'I'm sorry, I don't have that information.' Do not include the word 'Response:' in your answer."""
+#             }
+#         ]
 
 #         response = huggingface_client.chat.completions.create(
-#             model="HuggingFaceH4/zephyr-7b-beta",
+#             # model="HuggingFaceH4/zephyr-7b-beta",
+#             model="mistralai/Mistral-7B-Instruct-v0.2",
 #             messages=messages,
-#             temperature=0.1,
+#             temperature=0.5,
 #             max_tokens=500
 #         )
 
@@ -335,7 +296,7 @@ def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, 
 
 def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 4000) -> str:
     """
-    Generate an answer based on the question and context, using passage retrieval only for large contexts.
+    Generate an answer based on the question and context using Groq's LLM.
 
     Args:
         question: The question to answer
@@ -344,7 +305,14 @@ def generate_answer(question: str, documents: List[str], max_length: int = 500, 
         context_threshold: Character threshold above which to use passage retrieval
     """
     try:
-        # Calculate total context length
+        from groq import Groq
+        
+        # Initialize Groq client with environment variable
+        client = Groq(api_key=groq_token)
+        
+        if not groq_token:
+            raise ValueError("GROQ_API_KEY environment variable is not set")
+        
         total_context_length = sum(len(doc) for doc in documents)
 
         # Determine whether to use passage retrieval
@@ -358,42 +326,79 @@ def generate_answer(question: str, documents: List[str], max_length: int = 500, 
             context = " ".join(documents)
 
         print(f"context: {context}")
-        messages = [
-            {
-                "role": "system",
-                "content": """You are a customer service representative providing helpful, direct, and concise responses. Follow these guidelines:
+        
+        chat_completion = client.chat.completions.create(
+#             messages=[
+#                 {
+#                     "role": "system",
+#                     "content": """You are a customer service representative providing helpful, direct, and concise responses. Follow these guidelines:
 
-Response Structure:
-- Do not include the word 'Response:' or similar phrases in your answers
-- Keep answers short and clear
-- Focus only on what is necessary to answer the question
+# Response Structure:
+# - Do not include the word 'Response:' or similar phrases in your answers
+# - Keep answers short and clear
+# - Focus only on what is necessary to answer the question
+# - Use natural, conversational language
+# - Directly address the question first
+# - Skip unnecessary pleasantries and marketing language
+# - Avoid lengthy introductions, provide answers immediately
+
+# Additional Guidance:
+# - If the information is not found in the context, say 'I'm sorry, I don't have that information.'
+# - If the response requires follow-up or clarification, suggest the next step clearly."""
+#                 },
+#                 {
+#                     "role": "user",
+#                     "content": f"""Context: {context}
+# Question: {question}
+
+# Provide a precise and helpful response based on the context above. Only use the information provided. If unsure, say 'I'm sorry, I don't have that information.' Do not include the word 'Response:' in your answer."""
+#                 }
+#             ],
+
+                messages=[
+                {
+                    "role": "system",
+                    "content": """You are a helpful AI assistant that provides natural, contextually appropriate responses. Scale your responses to match the user's input.
+
+Core Guidelines:
+1. Match the User's Style
+- Keep responses brief for brief queries
+- Be more detailed only when questions require it
+- Mirror the user's formality level
 - Use natural, conversational language
-- Directly address the question first
-- Skip unnecessary pleasantries and marketing language
-- Avoid lengthy introductions, provide answers immediately
 
-Additional Guidance:
-- If the information is not found in the context, say 'I'm sorry, I don't have that information.'
-- If the response requires follow-up or clarification, suggest the next step clearly."""
+2. Information Handling
+- Only use information from the provided context
+- Say "I don't have enough information to answer that question" when needed
+- Be direct and straightforward
+- Avoid unnecessary elaboration
 
-            },
-            {
-                "role": "user",
-                "content": f"""Context: {context}
-    Question: {question}
+3. Response Quality
+- Answer the main question first
+- Add details only if relevant
+- Skip unnecessary pleasantries
+- Stay focused and on-topic"""
+                },
+                {
+                    "role": "user",
+                    "content": f"""Context: {context}
 
-    Provide a precise and helpful response based on the context above. Only use the information provided. If unsure, say 'I'm sorry, I don't have that information.' Do not include the word 'Response:' in your answer."""
-            }
-        ]
+Question: {question}
 
-        response = huggingface_client.chat.completions.create(
-            model="HuggingFaceH4/zephyr-7b-beta",
-            messages=messages,
+Provide a response that:
+1. Matches the question's scope and complexity
+2. Uses only contextual information
+3. Is natural and appropriately concise"""
+                }
+            ],
+
+
+            model="llama3-70b-8192",
             temperature=0.0,
-            max_tokens=500
+            max_tokens=max_length
         )
 
-        return response.choices[0].message.content
+        return chat_completion.choices[0].message.content
 
     except Exception as e:
         logging.error(f"Error generating answer: {str(e)}")

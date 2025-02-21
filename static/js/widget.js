@@ -1,14 +1,36 @@
 (function() {
-    // Get configuration from script tag
-    const script = document.currentScript;
+    // Get the script tag
+    const scriptTag = document.currentScript;
+    const apiBase = scriptTag.getAttribute('data-api');
+    const chatbotId = scriptTag.getAttribute('data-id');
+
+    // Build API URLs from base
+    const urls = {
+        ask: `${apiBase}chatbot/${chatbotId}/ask`,
+        feedback: `${apiBase}chatbot/${chatbotId}/feedback`,
+        sentiment: `${apiBase}/analytics/sentiment/${chatbotId}`,
+        ticket: `${apiBase}ticket/create/${chatbotId}`,
+        escalate: `${apiBase}escalate`,
+        escalationStatus: `${apiBase}escalation/:escalation_id/status`,
+        escalationSend: `${apiBase}escalation/:escalation_id/send`,
+        escalationMessages: `${apiBase}escalation/:escalation_id/messages`
+    };
+
+    // Update the config object to include the new settings
     const config = {
-        chatbotId: script.getAttribute('data-chatbot-id'),
-        name: script.getAttribute('data-name') || 'Support Agent',
-        askUrl: script.getAttribute('data-ask-url'),
-        feedbackUrl: script.getAttribute('data-feedback-url'),
-        ticketUrl: script.getAttribute('data-ticket-url'),
-        avatar: script.getAttribute('data-avatar') || './assets/agent.png',
-        themeColor: script.getAttribute('data-theme-color') || '#0066CC'
+        chatbotId: chatbotId,
+        name: scriptTag.getAttribute('data-name') || 'Support Agent',
+        askUrl: urls.ask,
+        feedbackUrl: urls.feedback,
+        ticketUrl: urls.ticket,
+        avatar: scriptTag.getAttribute('data-avatar') || './assets/agent.png',
+        themeColor: scriptTag.getAttribute('data-theme') || '#0066CC',
+        escalateUrl: urls.escalate,
+        escalationSendUrls: urls.escalationSend,
+        escalationStatusUrls: urls.escalationStatus,
+        sentimentUrl: urls.sentiment,
+        enableEscalation: scriptTag.getAttribute('data-enable-escalation') !== 'false', // Default to true
+        enableTickets: scriptTag.getAttribute('data-enable-tickets') !== 'false', // Default to true
     };
 
     // Styles
@@ -27,7 +49,7 @@
             background: ${config.themeColor};
             color: white;
             border: none;
-            padding: 16px;
+            padding: 10px;
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -99,11 +121,86 @@
             gap: 4px;
         }
 
+        .chatbot-header-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
         .chatbot-header-actions {
             display: flex;
             flex-direction: column;
             gap: 8px;
             margin-top: 4px;
+        }
+
+        .chatbot-header-actions-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #FFFFFF;
+            cursor: pointer;
+            padding: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            margin-left: 8px;
+        }
+
+        .chatbot-header-actions-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .chatbot-header-actions-button svg {
+            width: 20px;
+            height: 20px;
+            stroke-width: 2;
+        }
+
+        .chatbot-dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 160px;
+            z-index: 1000;
+            margin-top: 4px;
+        }
+
+        .chatbot-dropdown-menu.show {
+            display: block;
+        }
+
+        .chatbot-dropdown-item {
+            padding: 12px 16px;
+            color: #333;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 14px;
+        }
+
+        .chatbot-dropdown-item:hover {
+          
+        }
+
+        .chatbot-dropdown-item:first-child {
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .chatbot-dropdown-item:last-child {
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
         }
 
         .chatbot-feedback-trigger {
@@ -372,6 +469,7 @@
             cursor: pointer;
             font-size: 14px;
             transition: background 0.2s ease;
+            margin-bottom: 0px;
         }
 
         .chatbot-ticket-submit {
@@ -482,6 +580,90 @@
                 height: calc(100vh - 100px);
             }
         }
+
+       .chatbot-header-sentiment {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+  margin-top: 5px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.chatbot-header-sentiment:hover {
+  opacity: 1;
+}
+
+.chatbot-sentiment-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px; /* Slightly rounded corners */
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+  width:15px;
+  height:15px;
+}
+
+.chatbot-sentiment-button:hover {
+  background: rgba(255, 255, 255, 0.1); /* Subtle hover effect */
+  transform: scale(1.1);
+}
+
+
+.chatbot-sentiment-button svg {
+  width: 24px; /* Icon size */
+  height: 24px;
+}
+
+.chatbot-sentiment-button:hover svg {
+  transform: scale(1.1); /* Slightly scale up icons on hover */
+}
+
+.chatbot-sentiment.submitted {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.chatbot-sentiment-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+    .chatbot-form-field {
+        background: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin: 8px 0;
+        border: 1px solid #e1e1e1;
+    }
+
+    .chatbot-form-field.completed {
+        border-left: 3px solid #22C55E;
+    }
+
+    .chatbot-form-field label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+
+    .chatbot-form-field input {
+        width: 100%;
+        border: none;
+        font-size: 14px;
+        outline: none;
+    }
+
+    .chatbot-checkmark {
+        color: #22C55E;
+        margin-left: 8px;
+    }
     `;
 
     // Helper function to adjust color brightness
@@ -503,11 +685,11 @@
     widget.innerHTML = `
         <div id="chatbot-widget" class="chatbot-container">
             <button id="chatbot-toggle" class="chatbot-toggle">
-                <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M59.949,58.684L55.104,44.15C57.654,39.702,59,34.647,59,29.5C59,13.233,45.767,0,29.5,0S0,13.233,0,29.5S13.233,59,29.5,59c4.64,0,9.257-1.108,13.378-3.208l15.867,4.176C58.83,59.989,58.915,60,59,60c0.272,0,0.538-0.112,0.729-0.316C59.98,59.416,60.065,59.032,59.949,58.684z M16,21.015h14c0.552,0,1,0.448,1,1s-0.448,1-1,1H16c-0.552,0-1-0.448-1-1S15.448,21.015,16,21.015z M43,39.015H16c-0.552,0-1-0.448-1-1s0.448-1,1-1h27c0.552,0,1,0.448,1,1S43.552,39.015,43,39.015z M43,31.015H16c-0.552,0-1-0.448-1-1s0.448-1,1-1h27c0.552,0,1,0.448,1,1S43.552,31.015,43,31.015z"/>
+                <svg viewBox="0 0 24 24" width="50" height="50" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2H4C2.9 2 2 2.9 2 4V18C2 19.1 2.9 20 4 20H6V24L12 20H20C21.1 20 22 19.1 22 18V4C22 2.9 21.1 2 20 2ZM7 11C6.45 11 6 10.55 6 10C6 9.45 6.45 9 7 9C7.55 9 8 9.45 8 10C8 10.55 7.55 11 7 11ZM12 11C11.45 11 11 10.55 11 10C11 9.45 11.45 9 12 9C12.55 9 13 9.45 13 10C13 10.55 12.55 11 12 11ZM17 11C16.45 11 16 10.55 16 10C16 9.45 16.45 9 17 9C17.55 9 18 9.45 18 10C18 10.55 17.55 11 17 11Z"/>
                 </svg>
             </button>
-            
+
             <div id="chatbot-content" class="chatbot-content">
                 <div class="chatbot-header">
                     <div class="chatbot-header-info">
@@ -519,21 +701,42 @@
                             </div>
                         </div>
                     </div>
-                
-                    <div class="chatbot-header-actions">
-                        <button class="chatbot-feedback-trigger" onclick="window.chatbotWidget.openTicketForm()">
-                            <span>Create Ticket</span>
-                            <span>🎫</span>
+
+                    <div class="chatbot-header-sentiment">
+                        <button onclick="window.chatbotWidget.submitSentiment(true)" 
+                                class="chatbot-sentiment-button chatbot-sentiment-positive" 
+                                title="Helpful">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="#e1e1e1" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                            </svg>
                         </button>
-                        <button class="chatbot-feedback-trigger" onclick="window.chatbotWidget.openFeedback()">
-                            <span>Feedback</span>
-                            <span>💬</span>
+                        <button onclick="window.chatbotWidget.submitSentiment(false)" 
+                                class="chatbot-sentiment-button chatbot-sentiment-negative" 
+                                title="Not Helpful">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="#e1e1e1" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14h-4.764a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.737 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+                            </svg>
                         </button>
                     </div>
-                    
+
+                    <button class="chatbot-header-actions-button" onclick="window.chatbotWidget.openFeedback()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 13.5997 2.37562 15.1116 3.04346 16.4525L2.20834 21.1667C2.09387 21.7651 2.60432 22.2756 3.20275 22.1611L7.91676 21.326C9.25766 21.9938 10.7696 22.3694 12.3693 22.3694" 
+                                  stroke="currentColor" 
+                                  stroke-width="1.5" 
+                                  stroke-linecap="round" 
+                                  stroke-linejoin="round"/>
+                            <path d="M8 12H8.01M12 12H12.01M16 12H16.01" 
+                                  stroke="currentColor" 
+                                  stroke-width="2" 
+                                  stroke-linecap="round" 
+                                  stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+
                     <button class="chatbot-close-chat" onclick="window.chatbotWidget.toggle()">×</button>
                 </div>
-                        
+
                 <div id="chatbot-messages" class="chatbot-messages">
                     <div class="chatbot-message bot">
                         Hi there! 👋 How can I help you today?
@@ -579,7 +782,7 @@
                         </select>
                     </div>
                     <div class="chatbot-form-group">
-                        <label for="ticket-account">Account Details</label>
+                        <label for="ticket-account">Contact Details</label>
                         <input type="text" id="ticket-account" required>
                     </div>
                     <div class="chatbot-ticket-actions">
@@ -611,7 +814,281 @@
     window.chatbotWidget = {
         userId: 'user_' + Math.random().toString(36).substr(2, 9),
         isTyping: false,
+        noResponseTimeout: null,
+        escalationStartTime: null,
+        ticketPromptShown: false,
+        ticketFormData: {},
+        oldInputHandler: null,
         
+
+        async startEscalation() {
+            try {
+                if (!config.chatbotId) {
+                    throw new Error('Chatbot ID is missing in widget configuration');
+                }
+    
+                const response = await fetch(config.escalateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'User-ID': this.userId,
+                    },
+                    body: JSON.stringify({
+                        chatbot_id: config.chatbotId,
+                    }),
+                });
+    
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText}`);
+                }
+    
+                const data = await response.json();
+                this.currentEscalationId = data.escalation_id;
+                this.escalationStartTime = Date.now();
+                this.ticketPromptShown = false;
+    
+                // Set timeout for 30 seconds
+                this.noResponseTimeout = setTimeout(() => {
+                    this.promptTicketCreation("If no agent has responded to your request. Would you like to create a ticket?");
+                }, 30000);
+    
+                // Store the URLs returned from the server
+                this.escalationStatusUrl = data.status_url;
+                this.escalationSendUrl = data.send_url;
+    
+                // Start SSE connection for real-time updates
+                this.startSSE(this.currentEscalationId);
+                this.showEscalationChat();
+    
+            } catch (error) {
+                console.error('Escalation error:', error);
+                this.displayError(`Connection failed: ${error.message}`);
+            }
+        },
+    
+
+    // Start SSE connection for real-time updates
+    startSSE(escalationId) {
+        if (this.eventSource) {
+            this.eventSource.close(); // Close existing connection
+        }
+    
+        const url = `http://localhost:5000/escalation/${escalationId}/events`;
+        this.eventSource = new EventSource(url);
+    
+        this.eventSource.onmessage = (event) => {
+            console.log('Raw SSE event:', event.data);
+            const data = JSON.parse(event.data);
+            console.log('Parsed data:', data);
+    
+            if (data.type === 'status') {
+                console.log('Processing status update:', data.status);
+                this.handleEscalationStatus(data);
+            } else if (data.type === 'message') {
+                console.log('Processing message:', data);
+                this.handleEscalationMessage(data);
+            }
+        };
+    
+        this.eventSource.onerror = (error) => {
+            console.error('SSE error:', error);
+            this.eventSource.close();
+            this.displayError('Connection to the agent was lost. Please try again.');
+        };
+    },
+
+
+    async submitSentiment(sentiment) {
+        try {
+            const sentimentButtons = document.querySelectorAll('.chatbot-sentiment-button');
+            
+            // Disable buttons
+            sentimentButtons.forEach(button => {
+                button.classList.add('disabled');
+            });
+
+            const response = await fetch(config.sentimentUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-ID': this.userId
+                },
+                body: JSON.stringify({
+                    sentiment: sentiment,
+                    conversation_id: this.currentConversationId
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to submit sentiment');
+            }
+
+            // Show temporary thank you message and re-enable after delay
+            setTimeout(() => {
+                sentimentButtons.forEach(button => {
+                    button.classList.remove('disabled');
+                });
+            }, 3000);
+
+        } catch (error) {
+            console.error('Sentiment submission error:', error);
+            // Re-enable buttons on error
+            sentimentButtons.forEach(button => {
+                button.classList.remove('disabled');
+            });
+        }
+    },
+
+    handleEscalationStatus(data) {
+        if (data.status === 'in_progress') {
+
+            console.log('status:',data.status)
+            // Clear the timeout if an agent joins
+            if (this.noResponseTimeout) {
+                clearTimeout(this.noResponseTimeout);
+                this.noResponseTimeout = null;
+            }
+            this.displayMessage('Agent has joined the conversation. You can now chat directly.', 'bot');
+        } else {
+            this.displayMessage(`Escalation status: ${data.status}`, 'bot');
+        }
+        console.log('pow:',data.status)
+    },
+
+
+    // Handle new escalation messages
+    // handleEscalationMessage(data) {
+    //     this.displayMessage(data.message, data.sender === 'agent' ? 'bot' : 'user', data.id);
+    // },
+
+    handleEscalationMessage(data) {
+        const messages = document.getElementById('chatbot-messages');
+    
+        // Check if the message already exists in the UI
+        const existingMessage = messages.querySelector(`[data-message-id="${data.id}"]`);
+        if (existingMessage) {
+            return; // Skip if the message already exists
+        }
+    
+        // Display the new message
+        this.displayMessage(data.message, data.sender === 'agent' ? 'bot' : 'user', data.id);
+    },
+
+    // Poll escalation status using SSE
+    pollEscalationStatus() {
+        if (!this.currentEscalationId) {
+            console.error('No active escalation to poll status for.');
+            return;
+        }
+
+        // SSE already handles status updates, so no need for additional polling
+        console.log('Polling escalation status via SSE...');
+    },
+
+    // Poll escalation messages using SSE
+    pollEscalationMessages() {
+        if (!this.currentEscalationId) {
+            console.error('No active escalation to poll messages for.');
+            return;
+        }
+
+        // SSE already handles message updates, so no need for additional polling
+        console.log('Polling escalation messages via SSE...');
+    },
+
+    // Show escalation chat UI
+    showEscalationChat() {
+        // Store the original input handler before switching to escalation mode
+        const input = document.getElementById('chatbot-input');
+        this.originalChatHandler = input.onkeypress;
+
+        const messages = document.getElementById('chatbot-messages');
+        messages.innerHTML = `
+            <div class="chatbot-message bot">
+                Connecting you to a live agent... Please wait.
+            </div>
+        `;
+
+        const inputContainer = document.querySelector('.chatbot-input-container');
+        inputContainer.innerHTML = `
+            <div class="chatbot-input-wrapper">
+                <input type="text" 
+                       id="escalation-input" 
+                       class="chatbot-input"
+                       placeholder="Type your message to the agent..."
+                       autocomplete="off">
+                <button id="send-to-agent" class="chatbot-send">
+                    ${document.querySelector('#chatbot-send').innerHTML}
+                </button>
+            </div>
+        `;
+
+        // Add event listeners
+        const escalationInput = document.getElementById('escalation-input');
+        const sendButton = document.getElementById('send-to-agent');
+
+        escalationInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') this.sendToAgent();
+        });
+
+        sendButton.addEventListener('click', () => this.sendToAgent());
+    },
+
+    // Send a message to the agent
+    async sendToAgent() {
+        const input = document.getElementById('escalation-input');
+        const message = input.value.trim();
+    
+        if (!message || !this.currentEscalationId || !this.escalationSendUrl) return;
+    
+        console.log('Sending message to agent:', message); // Debugging log
+    
+        const sendUrl = `http://localhost:5000/escalation/${this.currentEscalationId}/send`;
+        try {
+            const response = await fetch(sendUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-ID': this.userId,
+                },
+                body: JSON.stringify({ message }),
+            });
+    
+            if (!response.ok) {
+                throw new Error(`Failed to send message: ${response.status}`);
+            }
+            // Debugging log
+            // console.log('Message sent successfully:', message); 
+            input.value = ''; // Clear the input field
+        } catch (error) {
+            console.error('Message send error:', error);
+            this.displayError('Failed to send message');
+        }
+    },
+
+
+    // Display a message in the chat
+    displayMessage(message, type, messageId = null) {
+        const messages = document.getElementById('chatbot-messages');
+        const div = document.createElement('div');
+        div.className = `chatbot-message ${type}`;
+        if (messageId) div.dataset.messageId = messageId;
+        div.textContent = message;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    },
+
+    // Display an error message in the chat
+    displayError(message) {
+        const messages = document.getElementById('chatbot-messages');
+        const div = document.createElement('div');
+        div.className = 'chatbot-message error';
+        div.textContent = message;
+        messages.appendChild(div);
+        messages.scrollTop = messages.scrollHeight;
+    },
+
         toggle() {
             const content = document.getElementById('chatbot-content');
             const toggle = document.getElementById('chatbot-toggle');
@@ -650,6 +1127,263 @@
             }
         },
 
+
+        checkCannotHelpResponse(response) {
+            // Convert response to lowercase for case-insensitive matching
+            const text = response.toLowerCase().trim();
+            
+            // Define pattern categories
+            const patterns = {
+                // Direct inability statements
+                cannotPhrases: [
+                    'cannot', 'can\'t', 'unable to', 'not able to', 'don\'t have',
+                    'do not have', 'couldn\'t', 'could not', 'won\'t be able'
+                ],
+                
+                // Knowledge/context related
+                knowledgePhrases: [
+                    'context', 'information', 'knowledge', 'data', 'details',
+                    'trained on', 'database', 'records', 'access to'
+                ],
+                
+                // Limitation expressions
+                limitationPhrases: [
+                    'limited', 'beyond', 'outside', 'exceed', 'limit',
+                    'restriction', 'boundary', 'scope', 'coverage'
+                ],
+                
+                // Uncertainty indicators
+                uncertaintyPhrases: [
+                    'unsure', 'uncertain', 'not sure', 'don\'t know',
+                    'do not know', 'unclear', 'ambiguous'
+                ],
+                
+                // Apology indicators
+                apologyPhrases: [
+                    'sorry', 'apolog', 'unfortunately', 'regret',
+                    'afraid', 'unable'
+                ],
+                
+                // Action impossibility
+                impossibilityPhrases: [
+                    'cannot provide', 'can\'t assist', 'not possible',
+                    'unable to help', 'can\'t answer', 'cannot answer'
+                ],
+    
+                // Missing information
+                missingPhrases: [
+                    'missing', 'lack', 'need more', 'additional',
+                    'insufficient', 'not enough'
+                ],
+    
+                // Request redirection
+                redirectionPhrases: [
+                    'suggest', 'recommend', 'might want to',
+                    'better to', 'would be best', 'try asking'
+                ]
+            };
+    
+            // Helper function to check if text contains any phrase from an array
+            const containsAnyPhrase = (text, phrases) => {
+                return phrases.some(phrase => text.includes(phrase));
+            };
+    
+            // Score the response based on pattern matches
+            let score = 0;
+            
+            // Check for combinations of patterns
+            if (containsAnyPhrase(text, patterns.cannotPhrases)) {
+                score += 2;
+            }
+            if (containsAnyPhrase(text, patterns.knowledgePhrases)) {
+                score += 1;
+            }
+            if (containsAnyPhrase(text, patterns.limitationPhrases)) {
+                score += 1;
+            }
+            if (containsAnyPhrase(text, patterns.uncertaintyPhrases)) {
+                score += 1.5;
+            }
+            if (containsAnyPhrase(text, patterns.apologyPhrases)) {
+                score += 1;
+            }
+            if (containsAnyPhrase(text, patterns.impossibilityPhrases)) {
+                score += 2;
+            }
+            if (containsAnyPhrase(text, patterns.missingPhrases)) {
+                score += 1;
+            }
+            if (containsAnyPhrase(text, patterns.redirectionPhrases)) {
+                score += 1;
+            }
+    
+            // Additional contextual patterns
+            if (text.includes('would need to') && text.includes('more')) {
+                score += 1;
+            }
+            if (text.includes('don\'t') && text.includes('access')) {
+                score += 1.5;
+            }
+            if (text.includes('not') && text.includes('available')) {
+                score += 1.5;
+            }
+    
+            // Common response patterns
+            const commonPatterns = [
+                /i (?:am|\'m) not (?:able|capable) to/,
+                /(?:cannot|can\'t) (?:help|assist|provide|answer)/,
+                /(?:don\'t|do not) have (?:enough|sufficient|the|that)/,
+                /(?:beyond|outside) (?:my|the) (?:scope|capability|knowledge)/,
+                /not (?:within|in) (?:my|the) (?:scope|capability|knowledge)/,
+                /would need more (?:information|details|context)/,
+                /(?:unable|impossible) to (?:provide|give|offer)/,
+                /not (?:authorized|permitted|allowed) to/
+            ];
+    
+            // Add to score for each matching pattern
+            commonPatterns.forEach(pattern => {
+                if (pattern.test(text)) {
+                    score += 1.5;
+                }
+            });
+    
+            // Only show escalation buttons if enabled
+            if (score >= 3 && config.enableEscalation) {
+                setTimeout(() => {
+                    this.addEscalationButtons();
+                }, 1000);
+            }
+    
+            return score >= 3;
+        },
+    
+
+        checkEscalationRequest(message) {
+            // Convert message to lowercase for case-insensitive matching
+            const text = message.toLowerCase().trim();
+            
+            // Define escalation request patterns
+            const patterns = {
+                // Direct escalation requests
+                directRequests: [
+                    'escalate', 'speak to agent', 'talk to human', 'talk to agent', 
+                    'live agent', 'real person', 'connect to agent', 'transfer to agent',
+                    'speak with someone', 'talk to someone', 'connect me', 'transfer me',
+                    'real agent', 'human agent', 'live person', 'real human', 'live human',
+                    'speak to a person', 'talk to a person', 'speak to someone else',
+                    'speak with a human', 'talk with a human', 'chat with human',
+                    'chat with agent', 'human support', 'agent support'
+                ],
+                
+                // Ticket-related requests
+                ticketRequests: [
+                    'create ticket', 'open ticket', 'submit ticket', 'raise ticket',
+                    'new ticket', 'support ticket', 'help ticket', 'ticket system',
+                    'make a ticket', 'start a ticket', 'generate ticket'
+                ],
+                
+                // Frustration indicators
+                frustrationPhrases: [
+                    'not helping', 'this isn\'t helping', 'you don\'t understand',
+                    'you\'re not understanding', 'this is frustrating', 'getting frustrated',
+                    'need a human', 'need a person', 'useless', 'waste of time',
+                    'going nowhere', 'not getting anywhere', 'this is pointless',
+                    'you\'re just a bot', 'stupid bot', 'not what i need',
+                    'you\'re not helpful', 'this isn\'t working', 'getting nowhere',
+                    'tired of this', 'fed up', 'annoying', 'irritating'
+                ],
+                
+                // Human preference indicators
+                humanPreference: [
+                    'human please', 'real human', 'actual person', 'want to speak to a person',
+                    'prefer to talk to', 'rather speak to', 'rather talk to',
+                    'need to speak to', 'want to talk to', 'have to speak to',
+                    'must speak to', 'need a real', 'want a real', 'prefer a real',
+                    'can i get a human', 'can i speak to someone', 'is there anyone',
+                    'is there someone', 'real support', 'human assistance'
+                ],
+                
+                // Support/help requests
+                supportRequests: [
+                    'customer service', 'customer support', 'technical support',
+                    'need assistance', 'help desk', 'support team', 'service desk',
+                    'tech support', 'human support', 'live support', 'real support',
+                    'support agent', 'help team', 'support staff', 'service team'
+                ],
+
+                // Action verbs
+                actionVerbs: [
+                    'need', 'want', 'require', 'request', 'demand', 'prefer',
+                    'like', 'wish', 'must', 'have to', 'got to', 'gotta'
+                ]
+            };
+
+            // Helper function to check if text contains any phrase from an array
+            const containsAnyPhrase = (text, phrases) => {
+                return phrases.some(phrase => text.includes(phrase));
+            };
+
+            // Score the message based on pattern matches
+            let score = 0;
+            
+            // Direct requests are strongest indicators
+            if (containsAnyPhrase(text, patterns.directRequests)) {
+                score += 3;
+            }
+            
+            // Ticket requests are also strong indicators
+            if (containsAnyPhrase(text, patterns.ticketRequests)) {
+                score += 3;
+            }
+            
+            if (containsAnyPhrase(text, patterns.frustrationPhrases)) {
+                score += 2;
+            }
+            
+            if (containsAnyPhrase(text, patterns.humanPreference)) {
+                score += 2;
+            }
+            
+            if (containsAnyPhrase(text, patterns.supportRequests)) {
+                score += 1.5;
+            }
+
+            // Check for action verb combinations
+            patterns.actionVerbs.forEach(verb => {
+                if (text.includes(verb)) {
+                    if (containsAnyPhrase(text, ['human', 'agent', 'person', 'someone'])) {
+                        score += 2;
+                    }
+                    if (containsAnyPhrase(text, ['support', 'help', 'assistance'])) {
+                        score += 1.5;
+                    }
+                }
+            });
+
+            // Additional contextual patterns
+            if (text.includes('can i') && containsAnyPhrase(text, ['speak', 'talk', 'connect', 'chat'])) {
+                score += 1.5;
+            }
+            
+            if (text.includes('please') && containsAnyPhrase(text, ['human', 'agent', 'person'])) {
+                score += 1.5;
+            }
+            
+            // Check for question patterns
+            if (/^(can|could|may|would|is there|are there)/.test(text) && 
+                containsAnyPhrase(text, ['human', 'agent', 'person', 'someone', 'support'])) {
+                score += 1.5;
+            }
+
+            // Check for negative bot references
+            if (text.includes('bot') && containsAnyPhrase(text, ['don\'t', 'not', 'stop', 'no'])) {
+                score += 1.5;
+            }
+
+            // Return true if score meets threshold
+            return score >= 2;
+        },
+
         async send() {
             const input = document.getElementById('chatbot-input');
             const messages = document.getElementById('chatbot-messages');
@@ -659,19 +1393,32 @@
             if (!question) return;
             
             try {
-                // Disable input and button while sending
                 input.disabled = true;
                 sendButton.disabled = true;
                 
-                // Add user message
+                // Check for escalation request before sending to bot
+                if (config.enableEscalation && this.checkEscalationRequest(question)) {
+                    messages.innerHTML += `<div class="chatbot-message user">${this.escapeHtml(question)}</div>`;
+                    input.value = '';
+                    messages.scrollTop = messages.scrollHeight;
+                    
+                    // Add a small delay before showing escalation options
+                    setTimeout(() => {
+                        this.displayMessage("I understand you'd like to speak with a live agent.", "bot");
+                        this.addEscalationButtons();
+                    }, 500);
+                    
+                    input.disabled = false;
+                    sendButton.disabled = false;
+                    return;
+                }
+                
                 messages.innerHTML += `<div class="chatbot-message user">${this.escapeHtml(question)}</div>`;
                 input.value = '';
                 messages.scrollTop = messages.scrollHeight;
                 
-                // Show typing indicator
                 this.showTyping();
                 
-                // Send request to backend
                 const response = await fetch(config.askUrl, {
                     method: 'POST',
                     headers: {
@@ -686,10 +1433,19 @@
                 }
                 
                 const data = await response.json();
-                
-                // Hide typing indicator and show response
                 this.hideTyping();
+    
+                // Use the new pattern matching function
+                const cannotHelp = this.checkCannotHelpResponse(data.answer);
+    
                 messages.innerHTML += `<div class="chatbot-message bot">${this.escapeHtml(data.answer)}</div>`;
+    
+                if (cannotHelp) {
+                    setTimeout(() => {
+                        // this.displayMessage(".", "bot");
+                        this.addEscalationButtons();
+                    }, 1000);
+                }
                 
             } catch (error) {
                 console.error('Chatbot error:', error);
@@ -700,13 +1456,13 @@
                     </div>
                 `;
             } finally {
-                // Re-enable input and button
                 input.disabled = false;
                 sendButton.disabled = false;
                 input.focus();
                 messages.scrollTop = messages.scrollHeight;
             }
         },
+    
 
         openFeedback() {
             document.getElementById('chatbot-feedback').classList.add('chatbot-visible');
@@ -745,29 +1501,148 @@
         },
 
         openTicketForm() {
-            document.getElementById('chatbot-ticket-form').classList.add('chatbot-visible');
-        },
-
-        closeTicketForm() {
-            document.getElementById('chatbot-ticket-form').classList.remove('chatbot-visible');
-            // Reset form
-            document.getElementById('ticket-subject').value = '';
-            document.getElementById('ticket-description').value = '';
-            document.getElementById('ticket-priority').value = 'medium';
-            document.getElementById('ticket-account').value = '';
-        },
-
-        async submitTicket() {
-            const subject = document.getElementById('ticket-subject').value.trim();
-            const description = document.getElementById('ticket-description').value.trim();
-            const priority = document.getElementById('ticket-priority').value;
-            const accountDetails = document.getElementById('ticket-account').value.trim();
-
-            if (!subject || !description || !accountDetails) {
-                alert('Please fill in all required fields');
+            // Clear any existing ticket form messages
+            this.ticketFormData = {};
+            
+            // Get the input element
+            const input = document.getElementById('chatbot-input');
+            if (!input) {
+                console.error('Input element not found');
                 return;
             }
+            
+            // Store the current input handler
+            this.oldInputHandler = input.onkeypress;
+            
+            // Clear any existing handlers
+            input.onkeypress = null;
+            
+            // Reset the input placeholder
+            input.placeholder = "Type your response...";
+            
+            // Enable the send button
+            const sendButton = document.getElementById('chatbot-send');
+            if (sendButton) {
+                sendButton.disabled = false;
+            }
+            
+            // Start the ticket creation process
+            this.displayMessage("Let's create a ticket to help resolve your issue. First, please enter a subject for your ticket:", "bot");
+            
+            // Set new input handler
+            input.onkeypress = (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.handleTicketInput('subject');
+                }
+            };
+            
+            // Add input event listener for send button
+            input.addEventListener('input', () => {
+                if (sendButton) {
+                    sendButton.disabled = !input.value.trim();
+                }
+            });
+        },
 
+        handleTicketInput(field) {
+            const input = document.getElementById('chatbot-input');
+            const value = input.value.trim();
+            
+            if (!value) {
+                this.displayMessage("This field cannot be empty. Please try again.", "error");
+                return;
+            }
+            
+            // Create a form field display
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'chatbot-message bot';
+            fieldDiv.innerHTML = `
+                <div class="chatbot-form-field completed">
+                    <label>${this.getFieldLabel(field)}</label>
+                    <div style="display: flex; align-items: center;">
+                        <span>${this.escapeHtml(value)}</span>
+                        <span class="chatbot-checkmark">✓</span>
+                    </div>
+                </div>
+            `;
+            
+            const messages = document.getElementById('chatbot-messages');
+            messages.appendChild(fieldDiv);
+            messages.scrollTop = messages.scrollHeight;
+            
+            // Clear input
+            input.value = '';
+            
+            // Store the value
+            this.ticketFormData[field] = value;
+            
+            // Determine next field to request
+            switch (field) {
+                case 'subject':
+                    this.displayMessage("Great! Now please provide a detailed description of the issue:", "bot");
+                    input.onkeypress = (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            this.handleTicketInput('description');
+                        }
+                    };
+                    break;
+                
+                case 'description':
+                    this.displayMessage("Finally, please provide your contact details:", "bot");
+                    input.onkeypress = (event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            this.handleTicketInput('account');
+                        }
+                    };
+                    break;
+                
+                case 'account':
+                    // Set default priority to medium
+                    this.ticketFormData.priority = 'medium';
+                    // Show summary and confirmation buttons
+                    this.displayTicketSummary();
+                    break;
+            }
+        },
+
+        // Add helper function to get field labels
+        getFieldLabel(field) {
+            const labels = {
+                subject: 'Subject',
+                description: 'Description',
+                priority: 'Priority Level',
+                account: 'Account Details'
+            };
+            return labels[field] || field;
+        },
+
+        // Update the displayTicketSummary function
+        displayTicketSummary() {
+            this.displayMessage("Perfect! I've collected all the information needed.", "bot");
+            
+            const messages = document.getElementById('chatbot-messages');
+            const buttonDiv = document.createElement('div');
+            buttonDiv.className = 'chatbot-message bot';
+            buttonDiv.style.display = 'flex';
+            buttonDiv.style.gap = '10px';
+            buttonDiv.innerHTML = `
+                <button onclick="window.chatbotWidget.submitTicketForm()" 
+                        style="background: ${config.themeColor}; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    Submit Ticket
+                </button>
+                <button onclick="window.chatbotWidget.cancelTicketForm()" 
+                        style="background: #e1e1e1; color: #333; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    Cancel
+                </button>
+            `;
+            messages.appendChild(buttonDiv);
+            messages.scrollTop = messages.scrollHeight;
+        },
+
+        async submitTicketForm() {
             try {
                 const response = await fetch(config.ticketUrl, {
                     method: 'POST',
@@ -776,10 +1651,10 @@
                         'User-ID': this.userId
                     },
                     body: JSON.stringify({
-                        subject,
-                        description,
-                        priority,
-                        account_details: accountDetails
+                        subject: this.ticketFormData.subject,
+                        description: this.ticketFormData.description,
+                        priority: 'medium', // Always set to medium
+                        account_details: this.ticketFormData.account
                     })
                 });
 
@@ -788,21 +1663,38 @@
                 }
 
                 const data = await response.json();
-                
-                // Add success message to chat
-                const messages = document.getElementById('chatbot-messages');
-                messages.innerHTML += `
-                    <div class="chatbot-message bot">
-                        Ticket created successfully! Your ticket ID is: ${data.ticket_id}
-                    </div>
-                `;
-                messages.scrollTop = messages.scrollHeight;
-
-                this.closeTicketForm();
+                this.displayMessage(`Ticket created successfully! Your ticket ID is: ${data.ticket_id}`, "bot");
+                this.resetTicketForm();
             } catch (error) {
                 console.error('Ticket creation error:', error);
-                alert('Sorry, we couldn\'t create your ticket. Please try again.');
+                this.displayMessage("Sorry, we couldn't create your ticket. Please try again.", "error");
             }
+        },
+
+        cancelTicketForm() {
+            this.displayMessage("Ticket creation cancelled.", "bot");
+            this.resetTicketForm();
+        },
+
+        resetTicketForm() {
+            const input = document.getElementById('chatbot-input');
+            
+            // Reset to default placeholder
+            input.placeholder = "Type your message...";
+            
+            // Clear the current handler
+            input.onkeypress = null;
+            
+            // Restore the original handler if it exists
+            if (this.oldInputHandler) {
+                input.onkeypress = this.oldInputHandler;
+                this.oldInputHandler = null;
+            }
+            
+            // Clear form data
+            this.ticketFormData = {};
+            input.value = '';
+            input.focus();
         },
 
         escapeHtml(unsafe) {
@@ -812,13 +1704,153 @@
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        },
+        addEscalationButtons() {
+            // Only proceed if escalation is enabled
+            if (!config.enableEscalation) {
+                return;
+            }
+
+            const messages = document.getElementById('chatbot-messages');
+            const buttonDiv = document.createElement('div');
+            buttonDiv.className = 'chatbot-message bot';
+            buttonDiv.style.display = 'flex';
+            buttonDiv.style.flexDirection = 'column';
+            buttonDiv.style.gap = '10px';
+            
+            buttonDiv.innerHTML = `
+                <div style="margin-bottom: 10px;">It seems I'm unable to fully address your question. Would you like to speak with a live agent?</div>
+                <div style="display: flex; gap: 10px; justify-content: flex-start;">
+                    <button 
+                        class="escalate-button" 
+                        style="
+                            background: ${config.themeColor}; 
+                            color: white; 
+                            border: none; 
+                            padding: 8px 8px; 
+                            border-radius: 4px; 
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: background-color 0.2s ease;
+                        "
+                        onclick="window.chatbotWidget.startEscalation()">
+                        Yes, talk to an agent
+                    </button>
+                    <button 
+                        class="escalate-button" 
+                        style="
+                            background: #e1e1e1; 
+                            color: #333; 
+                            border: none; 
+                            padding: 8px 8px; 
+                            border-radius: 5px; 
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: background-color 0.2s ease;
+                        "
+                        onclick="window.chatbotWidget.declineEscalation()">
+                        No, thanks
+                    </button>
+                </div>
+            `;
+    
+            messages.appendChild(buttonDiv);
+            messages.scrollTop = messages.scrollHeight;
+        },
+    
+
+        declineEscalation() {
+            const messages = document.getElementById('chatbot-messages');
+            messages.innerHTML += `
+                <div class="chatbot-message bot">
+                    Okay, let me know if you need anything else!
+                </div>
+            `;
+            messages.scrollTop = messages.scrollHeight;
+        },
+    
+        // Add function to prompt ticket creation
+        promptTicketCreation(message) {
+            if (this.ticketPromptShown || !config.enableTickets) return;
+            
+            this.ticketPromptShown = true;
+            const messages = document.getElementById('chatbot-messages');
+            
+            messages.innerHTML += `
+                <div class="chatbot-message bot">
+                    ${message}
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button onclick="window.chatbotWidget.startTicketFromEscalation()" 
+                                style="background: ${config.themeColor}; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                            Create Ticket
+                        </button>
+                        <button onclick="window.chatbotWidget.declineTicket()" 
+                                style="background: #e1e1e1; color: #333; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                            No, thanks
+                        </button>
+                    </div>
+                </div>
+            `;
+            messages.scrollTop = messages.scrollHeight;
+        },
+    
+        // Add new function to handle ticket creation from escalation
+        startTicketFromEscalation() {
+            // Clean up escalation-related state
+            if (this.eventSource) {
+                this.eventSource.close();
+            }
+            if (this.noResponseTimeout) {
+                clearTimeout(this.noResponseTimeout);
+            }
+            
+            // Reset the input container to its original state
+            const inputContainer = document.querySelector('.chatbot-input-container');
+            inputContainer.innerHTML = `
+                <div class="chatbot-input-wrapper">
+                    <input type="text" 
+                           id="chatbot-input" 
+                           class="chatbot-input"
+                           placeholder="Type your response..."
+                           autocomplete="off">
+                    <button id="chatbot-send" class="chatbot-send">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            // Reset states
+            this.currentEscalationId = null;
+            this.escalationStartTime = null;
+            this.ticketPromptShown = false;
+            
+            // Initialize the new input
+            const input = document.getElementById('chatbot-input');
+            input.onkeypress = null; // Clear any existing handlers
+            
+            // Start the ticket creation process
+            this.openTicketForm();
+        },
+    
+        // Add function to handle ticket decline
+        declineTicket() {
+            const messages = document.getElementById('chatbot-messages');
+            messages.innerHTML += `
+                <div class="chatbot-message bot">
+                    Okay, please let me know if you change your mind or need anything else!
+                </div>
+            `;
+            messages.scrollTop = messages.scrollHeight;
         }
     };
 
     // Add event listeners
     document.getElementById('chatbot-toggle').onclick = () => window.chatbotWidget.toggle();
     
-    // Add event listeners
+
+    
     const input = document.getElementById('chatbot-input');
     const sendButton = document.getElementById('chatbot-send');
     

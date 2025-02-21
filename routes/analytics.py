@@ -1,4 +1,3 @@
-
 from extensions import db
 from datetime import datetime
 import json
@@ -14,7 +13,7 @@ import json
 from functools import wraps
 import logging
 from sqlalchemy import desc
-from models import Chatbot, GmailIntegration,QuestionAnalytics
+from models import Chatbot, GmailIntegration,QuestionAnalytics,SentimentAnalytics
 from extensions import db
 # Analytics Blueprint
 analytics_bp = Blueprint('analytics', __name__)
@@ -40,6 +39,9 @@ def handle_errors(f):
             current_app.logger.error(f"Error in {f.__name__}: {str(e)}")
             return jsonify({"error": "An unexpected error occurred"}), 500
     return decorated_function
+
+
+
 
 # analytics/routes.py
 @analytics_bp.route('/analytics/questions/<chatbot_id>', methods=['GET'])
@@ -144,8 +146,11 @@ def get_common_questions(chatbot_id):
 def get_question_clusters(chatbot_id):
     """Get question clusters by topic"""
     try:
-        # Get timeframe from query parameters (default to last 30 days)
+        # Get parameters from query
         days = request.args.get('days', 30, type=int)
+        min_clusters = request.args.get('min_clusters', 3, type=int)
+        max_clusters = request.args.get('max_clusters', 10, type=int)
+        
         cutoff_date = datetime.utcnow() - timedelta(days=days)
 
         # Get questions from the specified timeframe
@@ -156,50 +161,97 @@ def get_question_clusters(chatbot_id):
 
         questions = [entry.question for entry in entries]
         
-        if len(questions) < 5:
+        if len(questions) < min_clusters:
             return jsonify({
                 "error": "Not enough questions for meaningful clustering",
-                "minimum_required": 5,
+                "minimum_required": min_clusters,
                 "current_count": len(questions)
             }), 400
 
-        # Perform clustering
-        vectorizer = TfidfVectorizer(max_features=100, stop_words='english')
-        vectors = vectorizer.fit_transform(questions)
+        # Preprocess questions
+        preprocessed_questions = [q.lower().strip() for q in questions]
         
-        n_clusters = min(10, len(questions) // 5)
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        # Vectorize with improved parameters
+        vectorizer = TfidfVectorizer(
+            max_features=200,
+            stop_words='english',
+            ngram_range=(1, 2),
+            min_df=2,
+            max_df=0.9
+        )
+        
+        try:
+            vectors = vectorizer.fit_transform(preprocessed_questions)
+        except ValueError:
+            return jsonify({
+                "error": "Could not vectorize questions. Try adjusting parameters."
+            }), 400
+
+        # Calculate optimal number of clusters
+        n_clusters = min(max_clusters, max(min_clusters, len(questions) // 5))
+        
+        # Perform clustering
+        kmeans = KMeans(
+            n_clusters=n_clusters,
+            random_state=42,
+            n_init=10
+        )
         clusters = kmeans.fit_predict(vectors)
+
+        # Calculate distances to cluster centers for finding representative questions
+        distances = kmeans.transform(vectors)
 
         # Group questions by cluster
         clustered_data = {}
-        for idx, cluster_id in enumerate(clusters):
+        for idx, (cluster_id, dist) in enumerate(zip(clusters, distances)):
             if cluster_id not in clustered_data:
                 clustered_data[cluster_id] = []
+            
+            similarity_score = 1 - (dist[cluster_id] / max(dist))
+            
             clustered_data[cluster_id].append({
                 "question": questions[idx],
                 "answer": entries[idx].answer,
-                "asked_at": entries[idx].created_at.isoformat()
+                "asked_at": entries[idx].created_at.isoformat(),
+                "similarity_score": float(similarity_score)
             })
 
-        # Get topic terms for each cluster
+        # Get topic terms and organize cluster information
         feature_names = vectorizer.get_feature_names_out()
         clusters_info = []
+        
         for cluster_id, questions_list in clustered_data.items():
+            # Sort questions by similarity score
+            questions_list.sort(key=lambda x: x['similarity_score'], reverse=True)
+            
+            # Get representative terms
             top_terms_idx = kmeans.cluster_centers_[cluster_id].argsort()[-5:][::-1]
             top_terms = [feature_names[idx] for idx in top_terms_idx]
             
+            # Use most representative question as cluster label
+            cluster_label = questions_list[0]['question'] if questions_list else "Unnamed Cluster"
+            
             clusters_info.append({
                 "cluster_id": int(cluster_id),
+                "cluster_label": cluster_label,
                 "topic_terms": top_terms,
                 "questions": questions_list,
-                "question_count": len(questions_list)
+                "question_count": len(questions_list),
+                "average_similarity": float(sum(q['similarity_score'] for q in questions_list) / len(questions_list))
             })
+
+        # Sort clusters by size
+        clusters_info.sort(key=lambda x: x['question_count'], reverse=True)
 
         return jsonify({
             "clusters": clusters_info,
             "total_questions": len(questions),
-            "timeframe_days": days
+            "timeframe_days": days,
+            "cluster_quality_metrics": {
+                "number_of_clusters": n_clusters,
+                "average_cluster_size": len(questions) / n_clusters,
+                "inertia": float(kmeans.inertia_)
+            }
         }), 200
 
     except Exception as e:
@@ -253,6 +305,89 @@ def get_usage_patterns(chatbot_id):
         return jsonify({"error": "Failed to get usage patterns"}), 500
 
 
+# Add to analytics.py
+@analytics_bp.route('/analytics/sentiment/<chatbot_id>', methods=['GET'])
+@login_required
+@handle_errors
+def get_sentiment_analytics(chatbot_id):
+    """Get sentiment analytics for a specific chatbot"""
+    try:
+        # Get optional date range filters from query parameters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        query = SentimentAnalytics.query.filter_by(chatbot_id=chatbot_id)
+        
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            query = query.filter(SentimentAnalytics.timestamp >= start_date)
+        
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            query = query.filter(SentimentAnalytics.timestamp <= end_date)
+        
+        sentiment_records = query.all()
+        
+        total_records = len(sentiment_records)
+        positive_count = sum(1 for record in sentiment_records if record.user_sentiment)
+        negative_count = total_records - positive_count
+        
+        positive_percentage = (positive_count / total_records * 100) if total_records > 0 else 0
+        
+        return jsonify({
+            "total_ratings": total_records,
+            "positive_ratings": positive_count,
+            "negative_ratings": negative_count,
+            "satisfaction_rate": round(positive_percentage, 2),
+            "detail_records": [{
+                "sentiment": "positive" if record.user_sentiment else "negative",
+                "timestamp": record.timestamp.isoformat(),
+                "conversation_id": record.conversation_id
+            } for record in sentiment_records]
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error retrieving sentiment analytics: {str(e)}")
+        return jsonify({"error": "Failed to retrieve sentiment analytics"}), 500
+
+
+
+#------------------------------------------------
+# NEW SENTIMENT ANALYSIS ROUTE
+#------------------------------------------------
+@analytics_bp.route('/analytics/sentiment/<chatbot_id>', methods=['POST'])
+@handle_errors
+def submit_sentiment(chatbot_id):
+    """Submit user sentiment for a chat interaction"""
+    try:
+        data = request.json
+        sentiment = data.get('sentiment')
+        conversation_id = data.get('conversation_id')
+        
+        if sentiment is None:
+            return jsonify({"error": "Sentiment value is required"}), 400
+            
+        sentiment_record = SentimentAnalytics(
+            chatbot_id=chatbot_id,
+            user_sentiment=sentiment,
+            conversation_id=conversation_id
+        )
+        
+        db.session.add(sentiment_record)
+        db.session.commit()
+        
+        return jsonify({"message": "Sentiment recorded successfully"}), 201
+        
+    except Exception as e:
+        current_app.logger.error(f"Error recording sentiment: {str(e)}")
+        return jsonify({"error": "Failed to record sentiment"}), 500
+
+
+
+
+#------------------------------------------------
+# UPDATED DASHBOARD ROUTE
+#-------------------------------------------------
 @analytics_bp.route('/analytics/dashboard/<chatbot_id>', methods=['GET'])
 @login_required
 @handle_errors
@@ -265,11 +400,13 @@ def get_analytics_dashboard(chatbot_id):
         common_questions = get_common_questions(chatbot_id)[0].json
         clusters = get_question_clusters(chatbot_id)[0].json
         usage_patterns = get_usage_patterns(chatbot_id)[0].json
+        sentiment_data = get_sentiment_analytics(chatbot_id)[0].json
 
         return jsonify({
             "common_questions": common_questions,
             "topic_clusters": clusters,
             "usage_patterns": usage_patterns,
+            "sentiment_analytics": sentiment_data,
             "last_updated": datetime.utcnow().isoformat(),
             "timeframe_days": days
         }), 200

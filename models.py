@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 from sqlalchemy import Text
 from sqlalchemy.dialects import postgresql
+import uuid
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(128), unique=True, nullable=False)
@@ -75,14 +76,37 @@ from extensions import db
 from datetime import datetime
 
 class GmailIntegration(db.Model):
+    __tablename__ = 'gmail_integration'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    email = db.Column(db.String(255), nullable=False)
-    credentials = db.Column(db.Text, nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    access_token = db.Column(db.Text, nullable=False)
+    refresh_token = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationship to User model
-    user = db.relationship('User', backref=db.backref('gmail_integrations', lazy=True, cascade='all, delete-orphan'))
 
-    def __repr__(self):
-        return f'<GmailIntegration {self.email}>'
+
+class SentimentAnalytics(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chatbot_id = db.Column(db.String(36), db.ForeignKey('chatbot.id'), nullable=False)
+    user_sentiment = db.Column(db.Boolean, nullable=False)  # True for positive, False for negative
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    conversation_id = db.Column(db.String(36), nullable=True)  # To track specific conversations
+
+
+
+class Escalation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    chatbot_id = db.Column(db.String(36), db.ForeignKey('chatbot.id'), nullable=False)
+    user_id = db.Column(db.Integer, nullable=False)
+    agent_id = db.Column(db.Integer, nullable=True)
+    status = db.Column(db.String(20), default='pending')  # pending, in_progress, resolved
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+
+class EscalationMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    escalation_id = db.Column(db.Integer, db.ForeignKey('escalation.id'), nullable=False)
+    sender_id = db.Column(db.Integer, nullable=False)  # user_id or agent_id
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
