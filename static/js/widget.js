@@ -13,7 +13,8 @@
         escalate: `${apiBase}escalate`,
         escalationStatus: `${apiBase}escalation/:escalation_id/status`,
         escalationSend: `${apiBase}escalation/:escalation_id/send`,
-        escalationMessages: `${apiBase}escalation/:escalation_id/messages`
+        escalationMessages: `${apiBase}escalation/:escalation_id/messages`,
+        escalationEvents: `${apiBase}escalation/:escalation_id/events`
     };
 
     // Update the config object to include the new settings
@@ -31,6 +32,7 @@
         sentimentUrl: urls.sentiment,
         enableEscalation: scriptTag.getAttribute('data-enable-escalation') !== 'false', // Default to true
         enableTickets: scriptTag.getAttribute('data-enable-tickets') !== 'false', // Default to true
+        escalationEventsUrl: urls.escalationEvents,
     };
 
     // Styles
@@ -874,8 +876,8 @@
             this.eventSource.close(); // Close existing connection
         }
     
-        const url = `http://localhost:5000/escalation/${escalationId}/events`;
-        this.eventSource = new EventSource(url);
+        const eventsUrl = config.escalationEventsUrl.replace(':escalation_id', escalationId);
+        this.eventSource = new EventSource(eventsUrl);
     
         this.eventSource.onmessage = (event) => {
             console.log('Raw SSE event:', event.data);
@@ -1040,11 +1042,11 @@
         const input = document.getElementById('escalation-input');
         const message = input.value.trim();
     
-        if (!message || !this.currentEscalationId || !this.escalationSendUrl) return;
+        if (!message || !this.currentEscalationId) return;
     
-        console.log('Sending message to agent:', message); // Debugging log
+        console.log('Sending message to agent:', message);
     
-        const sendUrl = `http://localhost:5000/escalation/${this.currentEscalationId}/send`;
+        const sendUrl = config.escalationSendUrls.replace(':escalation_id', this.currentEscalationId);
         try {
             const response = await fetch(sendUrl, {
                 method: 'POST',
@@ -1058,9 +1060,7 @@
             if (!response.ok) {
                 throw new Error(`Failed to send message: ${response.status}`);
             }
-            // Debugging log
-            // console.log('Message sent successfully:', message); 
-            input.value = ''; // Clear the input field
+            input.value = '';
         } catch (error) {
             console.error('Message send error:', error);
             this.displayError('Failed to send message');
