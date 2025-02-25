@@ -33,6 +33,20 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
 
 
+from pusher import Pusher
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+pusher_client = Pusher(
+    app_id=os.getenv('PUSHER_APP_ID'),
+    key=os.getenv('PUSHER_KEY'),
+    secret=os.getenv('PUSHER_SECRET'),
+    cluster=os.getenv('PUSHER_CLUSTER'),
+    ssl=True
+)
+
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -620,6 +634,37 @@ def get_all_chatbots_feedback():
 #         'preview': integration_code
 #     })
 
+# @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
+# @login_required
+# @handle_errors
+# def get_chatbot_script(chatbot_id):
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     # Get customization settings
+#     customization = {"theme_color": "", "avatar_url": ""}
+#     if chatbot.data:
+#         try:
+#             chatbot_data = json.loads(chatbot.data) if isinstance(chatbot.data, str) else chatbot.data
+#             if isinstance(chatbot_data, list) and chatbot_data:
+#                 chatbot_data = chatbot_data[-1]
+#             if isinstance(chatbot_data, dict):
+#                 stored_custom = chatbot_data.get('customization', {})
+#                 customization.update(stored_custom)
+#         except json.JSONDecodeError:
+#             pass
+
+#     # Generate compact script
+#     script = f'''<script src="{url_for('static',filename='js/widget.js',_external=True)}"data-id="{chatbot_id}"data-name="{chatbot.name}"data-theme="{customization['theme_color']}"data-avatar="{customization['avatar_url']}"data-api="{request.url_root}"></script>'''
+
+#     return jsonify({
+#         'integration_code': script,
+#         'preview': script
+#     })
+
+
+
 @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
 @login_required
 @handle_errors
@@ -628,8 +673,13 @@ def get_chatbot_script(chatbot_id):
     if not chatbot:
         return jsonify({"error": "Chatbot not found"}), 404
 
-    # Get customization settings
-    customization = {"theme_color": "", "avatar_url": ""}
+    # Get customization settings with defaults
+    customization = {
+        "theme_color": "",
+        "avatar_url": "",
+        "pusher_key": "43bd6f1835e5bb8165d8",  # Add default for pusher_key
+        "pusher_cluster": "us3"  # Add default for pusher_cluster
+    }
     if chatbot.data:
         try:
             chatbot_data = json.loads(chatbot.data) if isinstance(chatbot.data, str) else chatbot.data
@@ -641,8 +691,10 @@ def get_chatbot_script(chatbot_id):
         except json.JSONDecodeError:
             pass
 
-    # Generate compact script
-    script = f'''<script src="{url_for('static',filename='js/widget.js',_external=True)}"data-id="{chatbot_id}"data-name="{chatbot.name}"data-theme="{customization['theme_color']}"data-avatar="{customization['avatar_url']}"data-api="{request.url_root}"></script>'''
+    # Generate compact script with Pusher key and cluster
+    script = (
+        f'''<script src="{url_for('static', filename='js/widget.js', _external=True)}" data-id="{chatbot_id}" data-name="{chatbot.name}" data-theme="{customization['theme_color']}" data-avatar="{customization['avatar_url']}" data-api="{request.url_root}" data-pusher-key="{customization['pusher_key']}" data-pusher-cluster="{customization['pusher_cluster']}"></script>'''
+    )
 
     return jsonify({
         'integration_code': script,
@@ -980,11 +1032,78 @@ import json
 
 
 
+# @chatbot_bp.route('/escalate', methods=['POST'])
+# @cross_origin()
+# def create_escalation():
+#     try:
+#         # Validate request
+#         if not request.is_json:
+#             return jsonify({"error": "Request must be JSON"}), 400
+
+#         data = request.get_json()
+#         chatbot_id = data.get('chatbot_id')
+#         user_id = request.headers.get('User-ID', '4269')
+
+#         # Validate chatbot_id
+#         if not chatbot_id:
+#             return jsonify({"error": "Missing chatbot_id"}), 400
+
+#         # Check if chatbot exists
+#         chatbot = Chatbot.query.get(chatbot_id)
+#         if not chatbot:
+#             return jsonify({"error": "Chatbot not found"}), 404
+
+#         # Check for existing active escalation
+#         existing_escalation = Escalation.query.filter_by(
+#             chatbot_id=chatbot_id,
+#             user_id=user_id,
+#             status='pending'
+#         ).first()
+
+#         if existing_escalation:
+#             return jsonify({
+#                 "escalation_id": existing_escalation.id,
+#                 "status": "existing",
+#                 "status_url": f"/escalation/{existing_escalation.id}/status",
+#                 "send_url": f"/escalation/{existing_escalation.id}/send",
+#                 "messages_url": f"/escalation/{existing_escalation.id}/messages"
+#             }), 200
+
+#         # Create new escalation
+#         escalation = Escalation(
+#             chatbot_id=chatbot_id,
+#             user_id=user_id,
+#             status='pending',
+#             created_at=datetime.utcnow()
+#         )
+
+#         db.session.add(escalation)
+#         db.session.commit()
+
+#         # Return success with URLs
+#         return jsonify({
+#             "escalation_id": escalation.id,
+#             "status": "created",
+#             "status_url": f"/escalation/{escalation.id}/status",
+#             "send_url": f"/escalation/{escalation.id}/send",
+#             "messages_url": f"/escalation/{escalation.id}/messages"
+#         }), 201
+
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in escalation: {str(e)}")
+#         return jsonify({"error": "Database error occurred"}), 500
+#     except Exception as e:
+#         current_app.logger.error(f"Escalation error: {str(e)}")
+#         return jsonify({"error": "Internal server error"}), 500
+
+
+
+
 @chatbot_bp.route('/escalate', methods=['POST'])
 @cross_origin()
 def create_escalation():
     try:
-        # Validate request
         if not request.is_json:
             return jsonify({"error": "Request must be JSON"}), 400
 
@@ -992,16 +1111,13 @@ def create_escalation():
         chatbot_id = data.get('chatbot_id')
         user_id = request.headers.get('User-ID', '4269')
 
-        # Validate chatbot_id
         if not chatbot_id:
             return jsonify({"error": "Missing chatbot_id"}), 400
 
-        # Check if chatbot exists
         chatbot = Chatbot.query.get(chatbot_id)
         if not chatbot:
             return jsonify({"error": "Chatbot not found"}), 404
 
-        # Check for existing active escalation
         existing_escalation = Escalation.query.filter_by(
             chatbot_id=chatbot_id,
             user_id=user_id,
@@ -1017,18 +1133,32 @@ def create_escalation():
                 "messages_url": f"/escalation/{existing_escalation.id}/messages"
             }), 200
 
-        # Create new escalation
         escalation = Escalation(
             chatbot_id=chatbot_id,
             user_id=user_id,
             status='pending',
             created_at=datetime.utcnow()
         )
-
         db.session.add(escalation)
         db.session.commit()
 
-        # Return success with URLs
+        # Publish new escalation event to Pusher
+        pusher_client.trigger(
+            f'chatbot-{chatbot_id}-escalations',
+            'escalation-update',
+            {
+                'type': 'escalations_update',
+                'escalations': [{
+                    "id": escalation.id,
+                    "chatbot_id": escalation.chatbot_id,
+                    "user_id": escalation.user_id,
+                    "status": escalation.status,
+                    "created_at": escalation.created_at.isoformat(),
+                    "messages_count": 0
+                }]
+            }
+        )
+
         return jsonify({
             "escalation_id": escalation.id,
             "status": "created",
@@ -1070,6 +1200,47 @@ def get_messages(escalation_id):
         return jsonify({"error": "An unexpected error occurred"}), 500
 
 
+
+
+# @chatbot_bp.route('/escalation/<escalation_id>/send', methods=['POST'])
+# def send_message(escalation_id):
+#     try:
+#         data = request.json
+#         message = data.get('message')
+#         user_id = request.headers.get('User-ID', '4269')
+
+#         if not message:
+#             return jsonify({"error": "Message is required"}), 400
+
+#         escalation = Escalation.query.get(escalation_id)
+#         if not escalation:
+#             return jsonify({"error": "Escalation not found"}), 404
+
+#         sender_id = user_id if escalation.user_id == user_id else 0  # 0 represents agent
+
+#         new_message = EscalationMessage(
+#             escalation_id=escalation_id,
+#             sender_id=sender_id,
+#             message=message
+#         )
+#         db.session.add(new_message)
+
+#         # if escalation.status == 'pending':
+#         #     escalation.status = 'in_progress'
+
+#         db.session.commit()
+
+#         return jsonify({"status": "success"}), 200
+
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in send_message: {str(e)}")
+#         return jsonify({"error": "Database error occurred"}), 500
+#     except Exception as e:
+#         current_app.logger.error(f"Error sending message: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+
+
 @chatbot_bp.route('/escalation/<escalation_id>/send', methods=['POST'])
 def send_message(escalation_id):
     try:
@@ -1093,10 +1264,35 @@ def send_message(escalation_id):
         )
         db.session.add(new_message)
 
-        # if escalation.status == 'pending':
-        #     escalation.status = 'in_progress'
+        if escalation.status == 'pending':
+            escalation.status = 'in_progress'
 
         db.session.commit()
+
+        # Publish new message event
+        pusher_client.trigger(
+            f'escalation-{escalation_id}',
+            'new-message',
+            {
+                'type': 'message',
+                'id': new_message.id,
+                'sender': 'agent' if sender_id == 0 else 'user',
+                'message': message,
+                'timestamp': new_message.timestamp.isoformat()
+            }
+        )
+
+        # Publish status update if changed
+        if escalation.status == 'in_progress':
+            pusher_client.trigger(
+                f'escalation-{escalation_id}',
+                'status-update',
+                {
+                    'type': 'status',
+                    'status': escalation.status,
+                    'agent_joined': escalation.agent_id is not None
+                }
+            )
 
         return jsonify({"status": "success"}), 200
 
@@ -1107,6 +1303,7 @@ def send_message(escalation_id):
     except Exception as e:
         current_app.logger.error(f"Error sending message: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
+
 
 
 @chatbot_bp.route('/escalation/<escalation_id>/status', methods=['GET'])
@@ -1219,6 +1416,28 @@ def get_chatbot_escalations(chatbot_id):
 
 
 
+# @chatbot_bp.route('/agent/escalation/<escalation_id>/join', methods=['POST'])
+# def join_escalation(escalation_id):
+#     try:
+#         escalation = Escalation.query.get(escalation_id)
+#         if not escalation:
+#             return jsonify({"error": "Escalation not found"}), 404
+
+#         escalation.status = 'in_progress'
+#         escalation.agent_id = 0  # Replace with actual agent ID from session
+#         db.session.commit()
+
+#         return jsonify({"message": "Escalation joined successfully"}), 200
+
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in join_escalation: {str(e)}")
+#         return jsonify({"error": "Database error occurred"}), 500
+#     except Exception as e:
+#         current_app.logger.error(f"Error joining escalation: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+
+
 @chatbot_bp.route('/agent/escalation/<escalation_id>/join', methods=['POST'])
 def join_escalation(escalation_id):
     try:
@@ -1229,6 +1448,17 @@ def join_escalation(escalation_id):
         escalation.status = 'in_progress'
         escalation.agent_id = 0  # Replace with actual agent ID from session
         db.session.commit()
+
+        # Publish status update
+        pusher_client.trigger(
+            f'escalation-{escalation_id}',
+            'status-update',
+            {
+                'type': 'status',
+                'status': escalation.status,
+                'agent_joined': True
+            }
+        )
 
         return jsonify({"message": "Escalation joined successfully"}), 200
 
@@ -1350,79 +1580,79 @@ import time
 #     return Response(stream_with_context(event_stream()), content_type='text/event-stream')
 
 
-@chatbot_bp.route('/escalation/<escalation_id>/events', methods=['GET'])
-def escalation_events(escalation_id):
-    def event_stream():
-        session = None
-        try:
-            # Create a new session using the session factory
-            session = db.session()  # Changed from create_scoped_session()
+# @chatbot_bp.route('/escalation/<escalation_id>/events', methods=['GET'])
+# def escalation_events(escalation_id):
+#     def event_stream():
+#         session = None
+#         try:
+#             # Create a new session using the session factory
+#             session = db.session()  # Changed from create_scoped_session()
             
-            escalation = session.query(Escalation).get(escalation_id)
-            if not escalation:
-                yield "data: Escalation not found\n\n"
-                return
+#             escalation = session.query(Escalation).get(escalation_id)
+#             if not escalation:
+#                 yield "data: Escalation not found\n\n"
+#                 return
             
-            last_id = request.args.get('last_id', 0, type=int)
-            last_status = None
+#             last_id = request.args.get('last_id', 0, type=int)
+#             last_status = None
             
-            while True:
-                try:
-                    # Query with the session
-                    messages = session.query(EscalationMessage).filter(
-                        EscalationMessage.escalation_id == escalation_id,
-                        EscalationMessage.id > last_id
-                    ).order_by(EscalationMessage.id.asc()).all()
+#             while True:
+#                 try:
+#                     # Query with the session
+#                     messages = session.query(EscalationMessage).filter(
+#                         EscalationMessage.escalation_id == escalation_id,
+#                         EscalationMessage.id > last_id
+#                     ).order_by(EscalationMessage.id.asc()).all()
                     
-                    for message in messages:
-                        yield f"""data: {json.dumps({
-                            'type': 'message',
-                            'id': message.id,
-                            'sender': 'agent' if message.sender_id == 0 else 'user',
-                            'message': message.message,
-                            'timestamp': message.timestamp.isoformat()
-                        })}\n\n"""
-                        last_id = message.id
+#                     for message in messages:
+#                         yield f"""data: {json.dumps({
+#                             'type': 'message',
+#                             'id': message.id,
+#                             'sender': 'agent' if message.sender_id == 0 else 'user',
+#                             'message': message.message,
+#                             'timestamp': message.timestamp.isoformat()
+#                         })}\n\n"""
+#                         last_id = message.id
                     
-                    # Refresh escalation object
-                    session.refresh(escalation)
+#                     # Refresh escalation object
+#                     session.refresh(escalation)
                     
-                    if escalation.status in ['in_progress']:
-                        if escalation.status != last_status:
-                            yield f"""data: {json.dumps({
-                                'type': 'status',
-                                'status': escalation.status,
-                                'agent_joined': True
-                            })}\n\n"""
-                            last_status = escalation.status
+#                     if escalation.status in ['in_progress']:
+#                         if escalation.status != last_status:
+#                             yield f"""data: {json.dumps({
+#                                 'type': 'status',
+#                                 'status': escalation.status,
+#                                 'agent_joined': True
+#                             })}\n\n"""
+#                             last_status = escalation.status
                     
-                    # Explicitly commit
-                    session.commit()
+#                     # Explicitly commit
+#                     session.commit()
                     
-                    time.sleep(1)
+#                     time.sleep(1)
                     
-                except Exception as e:
-                    if session:
-                        session.rollback()
-                    current_app.logger.error(f"Error in event stream loop: {str(e)}")
-                    continue
+#                 except Exception as e:
+#                     if session:
+#                         session.rollback()
+#                     current_app.logger.error(f"Error in event stream loop: {str(e)}")
+#                     continue
                     
-        except Exception as e:
-            current_app.logger.error(f"Error in event_stream: {str(e)}")
-            yield "data: An error occurred\n\n"
-        finally:
-            if session:
-                session.close()
+#         except Exception as e:
+#             current_app.logger.error(f"Error in event_stream: {str(e)}")
+#             yield "data: An error occurred\n\n"
+#         finally:
+#             if session:
+#                 session.close()
     
-    return Response(
-        stream_with_context(event_stream()),
-        content_type='text/event-stream',
-        headers={
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'X-Accel-Buffering': 'no'
-        }
-    )
+#     return Response(
+#         stream_with_context(event_stream()),
+#         content_type='text/event-stream',
+#         headers={
+#             'Cache-Control': 'no-cache',
+#             'Connection': 'keep-alive',
+#             'X-Accel-Buffering': 'no'
+#         }
+#     )
 
 
 @chatbot_bp.route('/escalation/<escalation_id>', methods=['DELETE'])
@@ -1446,28 +1676,72 @@ def delete_escalation(escalation_id):
         return jsonify({"error": "An unexpected error occurred"}), 500
 
 
+# @chatbot_bp.route('/escalation/<escalation_id>/status', methods=['PUT'])
+# def update_escalation_status(escalation_id):
+#     try:
+#         # Validate request
+#         if not request.is_json:
+#             return jsonify({"error": "Request must be JSON"}), 400
+
+#         data = request.get_json()
+#         new_status = data.get('status')
+
+#         # Validate status
+#         if new_status not in ['resolved', 'closed']:
+#             return jsonify({"error": "Invalid status. Must be 'resolved' or 'closed'"}), 400
+
+#         # Check if escalation exists
+#         escalation = Escalation.query.get(escalation_id)
+#         if not escalation:
+#             return jsonify({"error": "Escalation not found"}), 404
+
+#         # Update status
+#         escalation.status = new_status
+#         db.session.commit()
+
+#         return jsonify({
+#             "escalation_id": escalation.id,
+#             "status": escalation.status,
+#             "message": f"Escalation status updated to {new_status}"
+#         }), 200
+
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in update_escalation_status: {str(e)}")
+#         return jsonify({"error": "Database error occurred"}), 500
+#     except Exception as e:
+#         current_app.logger.error(f"Error updating escalation status: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+    
 @chatbot_bp.route('/escalation/<escalation_id>/status', methods=['PUT'])
 def update_escalation_status(escalation_id):
     try:
-        # Validate request
         if not request.is_json:
             return jsonify({"error": "Request must be JSON"}), 400
 
         data = request.get_json()
         new_status = data.get('status')
 
-        # Validate status
         if new_status not in ['resolved', 'closed']:
             return jsonify({"error": "Invalid status. Must be 'resolved' or 'closed'"}), 400
 
-        # Check if escalation exists
         escalation = Escalation.query.get(escalation_id)
         if not escalation:
             return jsonify({"error": "Escalation not found"}), 404
 
-        # Update status
         escalation.status = new_status
         db.session.commit()
+
+        # Publish status update
+        pusher_client.trigger(
+            f'escalation-{escalation_id}',
+            'status-update',
+            {
+                'type': 'status',
+                'status': escalation.status,
+                'agent_joined': escalation.agent_id is not None
+            }
+        )
 
         return jsonify({
             "escalation_id": escalation.id,
@@ -1482,66 +1756,65 @@ def update_escalation_status(escalation_id):
     except Exception as e:
         current_app.logger.error(f"Error updating escalation status: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
-    
 
-@chatbot_bp.route('/agent/escalations/<chatbot_id>/events', methods=['GET'])
-def chatbot_escalations_events(chatbot_id):
-    def event_stream():
-        try:
-            # Verify chatbot exists
-            chatbot = Chatbot.query.get(chatbot_id)
-            if not chatbot:
-                yield "data: {\"error\": \"Chatbot not found\"}\n\n"
-                return
+# @chatbot_bp.route('/agent/escalations/<chatbot_id>/events', methods=['GET'])
+# def chatbot_escalations_events(chatbot_id):
+#     def event_stream():
+#         try:
+#             # Verify chatbot exists
+#             chatbot = Chatbot.query.get(chatbot_id)
+#             if not chatbot:
+#                 yield "data: {\"error\": \"Chatbot not found\"}\n\n"
+#                 return
 
-            last_check = datetime.utcnow()
+#             last_check = datetime.utcnow()
 
-            while True:
-                # Fetch new or updated escalations since last check
-                escalations = Escalation.query.filter(
-                    (Escalation.chatbot_id == chatbot_id) &
-                    (Escalation.updated_at >= last_check)
-                ).all()
+#             while True:
+#                 # Fetch new or updated escalations since last check
+#                 escalations = Escalation.query.filter(
+#                     (Escalation.chatbot_id == chatbot_id) &
+#                     (Escalation.updated_at >= last_check)
+#                 ).all()
 
-                if escalations:
-                    # Prepare escalations data
-                    escalations_data = [{
-                        "id": esc.id,
-                        "chatbot_id": esc.chatbot_id,
-                        "user_id": esc.user_id,
-                        "status": esc.status,
-                        "created_at": esc.created_at.isoformat(),
-                        "messages_count": EscalationMessage.query.filter_by(escalation_id=esc.id).count()
-                    } for esc in escalations]
+#                 if escalations:
+#                     # Prepare escalations data
+#                     escalations_data = [{
+#                         "id": esc.id,
+#                         "chatbot_id": esc.chatbot_id,
+#                         "user_id": esc.user_id,
+#                         "status": esc.status,
+#                         "created_at": esc.created_at.isoformat(),
+#                         "messages_count": EscalationMessage.query.filter_by(escalation_id=esc.id).count()
+#                     } for esc in escalations]
 
-                    # Create the update event data
-                    event_data = {
-                        "type": "escalations_update",
-                        "escalations": escalations_data
-                    }
+#                     # Create the update event data
+#                     event_data = {
+#                         "type": "escalations_update",
+#                         "escalations": escalations_data
+#                     }
                     
-                    # Properly format the SSE data
-                    message = "data: " + json.dumps(event_data) + "\n\n"
-                    yield message
+#                     # Properly format the SSE data
+#                     message = "data: " + json.dumps(event_data) + "\n\n"
+#                     yield message
 
-                    last_check = datetime.utcnow()
+#                     last_check = datetime.utcnow()
 
-                time.sleep(2)  # Check every 2 seconds
+#                 time.sleep(2)  # Check every 2 seconds
 
-        except Exception as e:
-            current_app.logger.error(f"Error in escalations event stream: {str(e)}")
-            error_data = json.dumps({"error": str(e)})
-            yield f"data: {error_data}\n\n"
+#         except Exception as e:
+#             current_app.logger.error(f"Error in escalations event stream: {str(e)}")
+#             error_data = json.dumps({"error": str(e)})
+#             yield f"data: {error_data}\n\n"
 
-    return Response(
-        stream_with_context(event_stream()),
-        mimetype='text/event-stream',
-        headers={
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'X-Accel-Buffering': 'no'  # Added for Nginx compatibility
-        }
-    )
+#     return Response(
+#         stream_with_context(event_stream()),
+#         mimetype='text/event-stream',
+#         headers={
+#             'Cache-Control': 'no-cache',
+#             'Connection': 'keep-alive',
+#             'X-Accel-Buffering': 'no'  # Added for Nginx compatibility
+#         }
+#     )
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/customize', methods=['GET'])
 @cross_origin(supports_credentials=True)
