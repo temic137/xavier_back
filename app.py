@@ -139,8 +139,8 @@ def create_app():
     CORS(app, 
          resources={r"/*": {
              "origins": [
-                 "http://localhost:4200",
-                #  "https://xavierai-m-2.vercel.app",  
+                #  "https://xavierai.vercel.app",
+                 "https://xavierai-m-2.vercel.app",  
              ],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"],
              "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken","User-ID"],
