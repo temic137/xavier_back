@@ -325,8 +325,7 @@ def generate_answer(question: str, documents: List[str], max_length: int = 500, 
             # Use full context for smaller documents
             context = " ".join(documents)
 
-        print(f"context: {context}")
-        
+        print(yello)
         chat_completion = client.chat.completions.create(
 #             messages=[
 #                 {
@@ -397,6 +396,7 @@ Provide a response that:
             temperature=0.0,
             max_tokens=max_length
         )
+        
 
         return chat_completion.choices[0].message.content
 
