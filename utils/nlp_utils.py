@@ -250,7 +250,6 @@ def generate_answer(question: str, documents: List[str], max_length: int = 500, 
             # Use full context for smaller documents
             context = " ".join(documents)
 
-        print(f"context: {context}")
         messages = [
             {
                 "role": "system",
