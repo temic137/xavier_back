@@ -145,91 +145,10 @@ def get_relevant_passages(question: str, documents: List[str], bm25: BM25Okapi, 
 
 
 
-def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 4000) -> str:
-    """
-    Generate an answer based on the question and context, with dynamic response length depending on complexity.
-    
-    Args:
-        question: The question to answer
-        documents: List of document passages
-        max_length: Maximum length of the generated answer
-        context_threshold: Character threshold above which to use passage retrieval
-    """
-    try:
-        # Calculate total context length
-        total_context_length = sum(len(doc) for doc in documents)
-        
-        # Determine whether to use passage retrieval
-        if total_context_length > context_threshold:
-            # Use BM25 for large contexts
-            bm25 = prepare_bm25_index(documents)
-            relevant_info = get_relevant_passages(question, documents, bm25)
-            context = " ".join(relevant_info)
-        else:
-            # Use full context for smaller documents
-            context = " ".join(documents)
-        
-        print(f"context: {context}")
-        
-        # Keywords that might indicate need for detailed response
-        detail_indicators = [
-            # "explain", "describe", "elaborate", "details", "how does", "how do",
-        ]
-        
-        # Check if question requires detailed response
-        needs_detail = any(indicator in question.lower() for indicator in detail_indicators)
-        
-        system_content = """You are a helpful assistant that provides clear, natural responses. Follow these guidelines:
-1. Adapt your response length to the question:
-   - For simple questions, be brief and direct
-   - For complex questions, provide comprehensive explanations
-2. When detailed information is requested:
-   - Include relevant examples
-   - Break down complex concepts
-   - Provide step-by-step explanations when appropriate
-3. For basic questions:
-   - Keep responses concise
-   - Focus on key points only
-4. Always:
-   - Use natural language
-   - Stay relevant to the question
-   - Organize information logically
-   - Avoid unnecessary repetition"""
-        
-        messages = [
-            {
-                "role": "system",
-                "content": system_content
-            },
-            {
-                "role": "user",
-                "content": f"""Context: {context}
-
-Question: {question}
-
-Response type: {"detailed" if needs_detail else "concise"}"""
-            }
-        ]
-        
-        response = huggingface_client.chat.completions.create(
-            model="mistralai/Mistral-7B-Instruct-v0.2",
-            messages=messages,
-            temperature=0.5,
-            max_tokens=500
-        )
-        
-        return response.choices[0].message.content
-    
-    except Exception as e:
-        logging.error(f"Error generating answer: {str(e)}")
-        return "Sorry, I ran into an issue processing your question."
-    
-
-
 # def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 4000) -> str:
 #     """
-#     Generate an answer based on the question and context, using passage retrieval only for large contexts.
-
+#     Generate an answer based on the question and context, with dynamic response length depending on complexity.
+    
 #     Args:
 #         question: The question to answer
 #         documents: List of document passages
@@ -237,9 +156,9 @@ Response type: {"detailed" if needs_detail else "concise"}"""
 #         context_threshold: Character threshold above which to use passage retrieval
 #     """
 #     try:
-        
+#         # Calculate total context length
 #         total_context_length = sum(len(doc) for doc in documents)
-
+        
 #         # Determine whether to use passage retrieval
 #         if total_context_length > context_threshold:
 #             # Use BM25 for large contexts
@@ -249,48 +168,130 @@ Response type: {"detailed" if needs_detail else "concise"}"""
 #         else:
 #             # Use full context for smaller documents
 #             context = " ".join(documents)
-
+        
+#         print(f"context: {context}")
+        
+#         # Keywords that might indicate need for detailed response
+#         detail_indicators = [
+#             # "explain", "describe", "elaborate", "details", "how does", "how do",
+#         ]
+        
+#         # Check if question requires detailed response
+#         needs_detail = any(indicator in question.lower() for indicator in detail_indicators)
+        
+#         system_content = """You are a helpful assistant that provides clear, natural responses. Follow these guidelines:
+# 1. Adapt your response length to the question:
+#    - For simple questions, be brief and direct
+#    - For complex questions, provide comprehensive explanations
+# 2. When detailed information is requested:
+#    - Include relevant examples
+#    - Break down complex concepts
+#    - Provide step-by-step explanations when appropriate
+# 3. For basic questions:
+#    - Keep responses concise
+#    - Focus on key points only
+# 4. Always:
+#    - Use natural language
+#    - Stay relevant to the question
+#    - Organize information logically
+#    - Avoid unnecessary repetition"""
+        
 #         messages = [
 #             {
 #                 "role": "system",
-#                 "content": """You are a customer service representative providing helpful, direct, and concise responses. Follow these guidelines:
-
-# Response Structure:
-# - Do not include the word 'Response:' or similar phrases in your answers
-# - Keep answers short and clear
-# - Focus only on what is necessary to answer the question
-# - Use natural, conversational language
-# - Directly address the question first
-# - Skip unnecessary pleasantries and marketing language
-# - Avoid lengthy introductions, provide answers immediately
-
-# Additional Guidance:
-# - If the information is not found in the context, say 'I'm sorry, I don't have that information.'
-# - If the response requires follow-up or clarification, suggest the next step clearly."""
-
+#                 "content": system_content
 #             },
 #             {
 #                 "role": "user",
 #                 "content": f"""Context: {context}
-#     Question: {question}
 
-#     Provide a precise and helpful response based on the context above. Only use the information provided. If unsure, say 'I'm sorry, I don't have that information.' Do not include the word 'Response:' in your answer."""
+# Question: {question}
+
+# Response type: {"detailed" if needs_detail else "concise"}"""
 #             }
 #         ]
-
+        
 #         response = huggingface_client.chat.completions.create(
-#             # model="HuggingFaceH4/zephyr-7b-beta",
 #             model="mistralai/Mistral-7B-Instruct-v0.2",
 #             messages=messages,
 #             temperature=0.5,
 #             max_tokens=500
 #         )
-
+        
 #         return response.choices[0].message.content
-
+    
 #     except Exception as e:
 #         logging.error(f"Error generating answer: {str(e)}")
-#         return "I apologize, but I encountered an issue while processing your question."
+#         return "Sorry, I ran into an issue processing your question."
+    
+
+
+def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 4000) -> str:
+    """
+    Generate an answer based on the question and context, using passage retrieval only for large contexts.
+
+    Args:
+        question: The question to answer
+        documents: List of document passages
+        max_length: Maximum length of the generated answer
+        context_threshold: Character threshold above which to use passage retrieval
+    """
+    try:
+        
+        total_context_length = sum(len(doc) for doc in documents)
+
+        # Determine whether to use passage retrieval
+        if total_context_length > context_threshold:
+            # Use BM25 for large contexts
+            bm25 = prepare_bm25_index(documents)
+            relevant_info = get_relevant_passages(question, documents, bm25)
+            context = " ".join(relevant_info)
+        else:
+            # Use full context for smaller documents
+            context = " ".join(documents)
+
+        messages = [
+            {
+                "role": "system",
+                "content": """You are a customer service representative providing helpful, direct, and concise responses. Follow these guidelines:
+
+Response Structure:
+- Do not include the word 'Response:' or similar phrases in your answers
+- Keep answers short and clear
+- Focus only on what is necessary to answer the question
+- Use natural, conversational language
+- Directly address the question first
+- Skip unnecessary pleasantries and marketing language
+- Avoid lengthy introductions, provide answers immediately
+
+Additional Guidance:
+- If the information is not found in the context, say 'I'm sorry, I don't have that information.'
+- If the response requires follow-up or clarification, suggest the next step clearly."""
+
+            },
+            {
+                "role": "user",
+                "content": f"""Context: {context}
+    Question: {question}
+
+    Provide a precise and helpful response based on the context above. Only use the information provided. If unsure, say 'I'm sorry, I don't have that information.' Do not include the word 'Response:' in your answer."""
+            }
+        ]
+
+        response = huggingface_client.chat.completions.create(
+            # model="HuggingFaceH4/zephyr-7b-beta",
+            model="mistralai/Mistral-7B-Instruct-v0.2",
+            messages=messages,
+            temperature=0.5,
+            max_tokens=500
+        )
+        print(response.choices[0].message.content)
+
+        return response.choices[0].message.content
+
+    except Exception as e:
+        logging.error(f"Error generating answer: {str(e)}")
+        return "I apologize, but I encountered an issue while processing your question."
 
 
 # def generate_answer(question: str, documents: List[str], max_length: int = 500, context_threshold: int = 4000) -> str:
