@@ -391,7 +391,7 @@ Provide a response that:
             ],
 
 
-            model="llama3-70b-8192",
+            model="Mistral-Saba-24B",
             temperature=0.0,
             max_tokens=max_length
         )
