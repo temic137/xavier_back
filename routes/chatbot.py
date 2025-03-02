@@ -1241,12 +1241,75 @@ def get_messages(escalation_id):
 #         return jsonify({"error": "An unexpected error occurred"}), 500
 
 
+# @chatbot_bp.route('/escalation/<escalation_id>/send', methods=['POST'])
+# def send_message(escalation_id):
+#     try:
+#         data = request.json
+#         message = data.get('message')
+#         user_id = request.headers.get('User-ID', '4269')
+
+#         if not message:
+#             return jsonify({"error": "Message is required"}), 400
+
+#         escalation = Escalation.query.get(escalation_id)
+#         if not escalation:
+#             return jsonify({"error": "Escalation not found"}), 404
+
+#         sender_id = user_id if escalation.user_id == user_id else 0  # 0 represents agent
+
+#         new_message = EscalationMessage(
+#             escalation_id=escalation_id,
+#             sender_id=sender_id,
+#             message=message
+#         )
+#         db.session.add(new_message)
+
+#         if escalation.status == 'pending':
+#             escalation.status = 'in_progress'
+
+#         db.session.commit()
+
+#         # Publish new message event
+#         pusher_client.trigger(
+#             f'escalation-{escalation_id}',
+#             'new-message',
+#             {
+#                 'type': 'message',
+#                 'id': new_message.id,
+#                 'sender': 'agent' if sender_id == 0 else 'user',
+#                 'message': message,
+#                 'timestamp': new_message.timestamp.isoformat()
+#             }
+#         )
+
+#         # Publish status update if changed
+#         if escalation.status == 'in_progress':
+#             pusher_client.trigger(
+#                 f'escalation-{escalation_id}',
+#                 'status-update',
+#                 {
+#                     'type': 'status',
+#                     'status': escalation.status,
+#                     'agent_joined': escalation.agent_id is not None
+#                 }
+#             )
+
+#         return jsonify({"status": "success"}), 200
+
+#     except SQLAlchemyError as e:
+#         db.session.rollback()
+#         current_app.logger.error(f"Database error in send_message: {str(e)}")
+#         return jsonify({"error": "Database error occurred"}), 500
+#     except Exception as e:
+#         current_app.logger.error(f"Error sending message: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+
 @chatbot_bp.route('/escalation/<escalation_id>/send', methods=['POST'])
 def send_message(escalation_id):
     try:
         data = request.json
         message = data.get('message')
-        user_id = request.headers.get('User-ID', '4269')
+        user_id_str = request.headers.get('User-ID', '4269')  # String from header
 
         if not message:
             return jsonify({"error": "Message is required"}), 400
@@ -1255,7 +1318,14 @@ def send_message(escalation_id):
         if not escalation:
             return jsonify({"error": "Escalation not found"}), 404
 
-        sender_id = user_id if escalation.user_id == user_id else 0  # 0 represents agent
+        # Convert user_id to integer
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            user_id = 4269  # Fallback if invalid
+
+        # Determine sender (0 for agent, user_id for user)
+        sender_id = user_id if escalation.user_id == user_id else 0
 
         new_message = EscalationMessage(
             escalation_id=escalation_id,
@@ -1269,7 +1339,7 @@ def send_message(escalation_id):
 
         db.session.commit()
 
-        # Publish new message event
+        # Publish new message event with explicit sender
         pusher_client.trigger(
             f'escalation-{escalation_id}',
             'new-message',
