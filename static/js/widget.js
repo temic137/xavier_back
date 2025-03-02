@@ -2552,7 +2552,7 @@
         document.body.appendChild(widget);
 
         window.chatbotWidget = {
-            userId: 'user_' + Math.random().toString(36).substr(2, 9),
+            userId: Math.floor(Math.random() * 900000) + 100000,
             isTyping: false,
             noResponseTimeout: null,
             escalationStartTime: null,
@@ -2674,19 +2674,24 @@
             },
 
             handleEscalationMessage(data) {
-                console.log('Handling message:', data);
-                const messages = document.getElementById('chatbot-messages');
-                if (!messages) {
-                    console.error('chatbot-messages element not found');
-                    return;
-                }
-                const existingMessage = messages.querySelector(`[data-message-id="${data.id}"]`);
-                if (!existingMessage) {
-                    this.displayMessage(data.message, data.sender === 'agent' ? 'bot' : 'user', data.id);
-                } else {
-                    console.log(`Message ${data.id} already exists, skipping`);
-                }
-            },
+    const messages = document.getElementById('chatbot-messages');
+    if (!messages) {
+        console.error('chatbot-messages element not found');
+        return;
+    }
+    const existingMessage = messages.querySelector(`[data-message-id="${data.id}"]`);
+    if (!existingMessage) {
+        // Check if this replaces a temp message
+        const tempMsg = messages.querySelector(`[data-message-id^="temp_"]`);
+        if (tempMsg && tempMsg.textContent === data.message && data.sender !== 'agent') {
+            tempMsg.remove();  // Remove local temp message
+        }
+        const senderType = data.sender === 'agent' ? 'bot' : 'user';
+        this.displayMessage(data.message, senderType, data.id);
+    } else {
+        console.log(`Message ${data.id} already exists, skipping`);
+    }
+},
 
             showEscalationChat() {
                 const input = document.getElementById('chatbot-input');
@@ -2733,38 +2738,45 @@
                 }
             },
 
-            async sendToAgent() {
-                const input = document.getElementById('escalation-input');
-                if (!input) {
-                    console.error('Escalation input not found');
-                    return;
-                }
-                const message = input.value.trim();
+           async sendToAgent() {
+    const input = document.getElementById('escalation-input');
+    if (!input) {
+        console.error('Escalation input not found');
+        return;
+    }
+    const message = input.value.trim();
 
-                if (!message || !this.currentEscalationId) return;
+    if (!message || !this.currentEscalationId) return;
 
-                console.log('Sending message to agent:', message);
+    console.log('Sending message to agent:', message);
 
-                const sendUrl = config.escalationSendUrls.replace(':escalation_id', this.currentEscalationId);
-                try {
-                    const response = await fetch(sendUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'User-ID': this.userId,
-                        },
-                        body: JSON.stringify({ message }),
-                    });
+    const sendUrl = config.escalationSendUrls.replace(':escalation_id', this.currentEscalationId);
+    try {
+        // Display user's message locally with a temporary ID
+        const tempId = 'temp_' + Date.now();  // Unique temp ID
+        this.displayMessage(message, 'user', tempId);
 
-                    if (!response.ok) {
-                        throw new Error(`Failed to send message: ${response.status}`);
-                    }
-                    input.value = '';
-                } catch (error) {
-                    console.error('Message send error:', error);
-                    this.displayError('Failed to send message');
-                }
+        const response = await fetch(sendUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'User-ID': this.userId,
             },
+            body: JSON.stringify({ message }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to send message: ${response.status}`);
+        }
+        input.value = '';  // Clear input after success
+    } catch (error) {
+        console.error('Message send error:', error);
+        this.displayError('Failed to send message');
+        // Remove temp message on error
+        const tempMsg = document.querySelector(`[data-message-id="${tempId}"]`);
+        if (tempMsg) tempMsg.remove();
+    }
+},
 
             displayMessage(message, type, messageId = null) {
                 const messages = document.getElementById('chatbot-messages');
