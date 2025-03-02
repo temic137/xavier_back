@@ -140,7 +140,7 @@ def create_app():
          resources={r"/*": {
              "origins": [
                  "https://xavierai-m-2.vercel.app",
-                 # "https://xavierai-m-2.vercel.apphttps://xavierai-m-2.vercel.app",  
+                  "https://xavierai.pages.dev",  
              ],
              "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS","PATCH"],
              "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken","User-ID"],
