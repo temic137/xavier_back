@@ -271,17 +271,37 @@ def update_chatbot_data(chatbot_id):
     return jsonify({"message": "Chatbot updated successfully"}), 200
 
 
+# @chatbot_bp.route('/delete_chatbot/<chatbot_id>', methods=['DELETE'])
+# @handle_errors
+# def delete_chatbot(chatbot_id):
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot or chatbot.user_id != session['user_id']:
+#         return jsonify({"error": "Chatbot not found or unauthorized"}), 404
+    
+#     db.session.delete(chatbot)
+#     db.session.commit()
+    
+#     return jsonify({"message": "Chatbot deleted successfully"}), 200
+
+
+
 @chatbot_bp.route('/delete_chatbot/<chatbot_id>', methods=['DELETE'])
 @handle_errors
 def delete_chatbot(chatbot_id):
+    # First check if the chatbot exists and belongs to the current user
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot or chatbot.user_id != session['user_id']:
         return jsonify({"error": "Chatbot not found or unauthorized"}), 404
     
+    # Delete all related question_analytics records first
+    QuestionAnalytics.query.filter_by(chatbot_id=chatbot_id).delete()
+    
+    # Then delete the chatbot
     db.session.delete(chatbot)
     db.session.commit()
     
     return jsonify({"message": "Chatbot deleted successfully"}), 200
+
 
 
 
