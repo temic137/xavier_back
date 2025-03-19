@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, session, current_app,logging, url_for, redirect,  render_template, url_for,Response,Response, stream_with_context
-from models import Chatbot,Feedback, Ticket, TicketResponse
+from models import Chatbot,Feedback, Ticket, TicketResponse,QuestionAnalytics
 from werkzeug.utils import secure_filename
 from extensions import db
 from utils.nlp_utils import preprocess_text, get_general_answer
