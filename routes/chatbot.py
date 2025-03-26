@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, session, current_app,logging, url
 from models import Chatbot,Feedback, Ticket, TicketResponse,QuestionAnalytics
 from werkzeug.utils import secure_filename
 from extensions import db
-from utils.nlp_utils import preprocess_text, get_general_answer
+from utils.nlp_utils import  get_general_answer
 from utils.file_utils import extract_text_from_pdf, read_text_file,extract_folder_content,extract_text_from_url
 from utils.api_utils import fetch_real_time_data
 import json
@@ -31,7 +31,7 @@ import threading
 from collections import deque
 from sqlalchemy import create_engine
 from sqlalchemy.pool import QueuePool
-
+import requests
 
 from pusher import Pusher
 from dotenv import load_dotenv
@@ -51,6 +51,7 @@ pusher_client = Pusher(
 logging.basicConfig(level=logging.ERROR)
 
 chatbot_bp = Blueprint('chatbot', __name__)
+NLP_SERVICE_URL = os.getenv('NLP_SERVICE_URL', 'http://127.0.0.1:5001')
 
 CORS(chatbot_bp, supports_credentials=True)
 
@@ -271,20 +272,6 @@ def update_chatbot_data(chatbot_id):
     return jsonify({"message": "Chatbot updated successfully"}), 200
 
 
-# @chatbot_bp.route('/delete_chatbot/<chatbot_id>', methods=['DELETE'])
-# @handle_errors
-# def delete_chatbot(chatbot_id):
-#     chatbot = Chatbot.query.get(chatbot_id)
-#     if not chatbot or chatbot.user_id != session['user_id']:
-#         return jsonify({"error": "Chatbot not found or unauthorized"}), 404
-    
-#     db.session.delete(chatbot)
-#     db.session.commit()
-    
-#     return jsonify({"message": "Chatbot deleted successfully"}), 200
-
-
-
 @chatbot_bp.route('/delete_chatbot/<chatbot_id>', methods=['DELETE'])
 @handle_errors
 def delete_chatbot(chatbot_id):
@@ -301,7 +288,6 @@ def delete_chatbot(chatbot_id):
     db.session.commit()
     
     return jsonify({"message": "Chatbot deleted successfully"}), 200
-
 
 
 
@@ -405,77 +391,126 @@ import time
 
 
 
+
+
+
+# @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
+# def chatbot_ask(chatbot_id):
+#     start_time = time.time()  # Start timing the request
+
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     if request.content_type == 'application/json':
+#         # Handle JSON input
+#         data = request.json
+#         question = data.get('question')
+#     else:
+#         return jsonify({"error": "Unsupported content type"}), 415
+
+#     if not question:
+#         return jsonify({"error": "No question provided"}), 400
+
+#     try:
+#         chatbot_data_str = chatbot.data if isinstance(chatbot.data, str) else json.dumps(chatbot.data)
+#         chatbot_data = json.loads(chatbot_data_str)
+#         print(f"chatbot_data:) : {chatbot_data}")
+
+#         current_app.logger.debug(f"Chatbot data type: {type(chatbot_data)}")
+#         current_app.logger.debug(f"Chatbot data: {chatbot_data}")
+
+#         if isinstance(chatbot_data, list):
+#             if len(chatbot_data) > 0:
+#                 chatbot_data = chatbot_data[-1]
+#             else:
+#                 raise ValueError("Chatbot data list is empty")
+#         elif not isinstance(chatbot_data, dict):
+#             raise ValueError(f"Invalid chatbot data format: {type(chatbot_data)}")
+
+#         current_app.logger.debug(f"Processed chatbot data type: {type(chatbot_data)}")
+#         current_app.logger.debug(f"Processed chatbot data: {chatbot_data}")
+
+#         answer = get_general_answer(json.dumps(chatbot_data), question)
+
+#         # Calculate processing time
+#         processing_time = time.time() - start_time
+
+#         # Track analytics
+#         analytics_data = {
+#             "question": question,
+#             "answer": answer,
+#             "question_metadata": {
+#                 "processing_time": processing_time,
+#                 "keywords_matched": [
+#                     keyword for keyword in ["proce", "inventory", "stock", "available", "category", "type"]
+#                     if keyword in question.lower()
+#                 ]
+#             }
+#         }
+#         track_question_helper(chatbot_id, analytics_data)
+
+#         return jsonify({
+#             "question": question,
+#             "answer": answer,
+#             "processing_time": round(processing_time, 3)
+#         })
+
+#     except json.JSONDecodeError as e:
+#         current_app.logger.error(f"JSON decode error: {str(e)}")
+#         return jsonify({"error": "Invalid chatbot data format"}), 500
+#     except ValueError as e:
+#         current_app.logger.error(f"Value error: {str(e)}")
+#         return jsonify({"error": str(e)}), 500
+#     except Exception as e:
+#         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+
+
+
 @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
 def chatbot_ask(chatbot_id):
-    start_time = time.time()  # Start timing the request
+    from models import Chatbot  # Import here or at top as per your setup
+    from extensions import db
 
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
         return jsonify({"error": "Chatbot not found"}), 404
 
-    if request.content_type == 'application/json':
-        # Handle JSON input
-        data = request.json
-        question = data.get('question')
-    else:
+    if request.content_type != 'application/json':
         return jsonify({"error": "Unsupported content type"}), 415
 
+    data = request.json
+    question = data.get('question')
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
     try:
-        chatbot_data_str = chatbot.data if isinstance(chatbot.data, str) else json.dumps(chatbot.data)
-        chatbot_data = json.loads(chatbot_data_str)
-
-        current_app.logger.debug(f"Chatbot data type: {type(chatbot_data)}")
-        current_app.logger.debug(f"Chatbot data: {chatbot_data}")
-
-        if isinstance(chatbot_data, list):
-            if len(chatbot_data) > 0:
-                chatbot_data = chatbot_data[-1]
-            else:
-                raise ValueError("Chatbot data list is empty")
-        elif not isinstance(chatbot_data, dict):
-            raise ValueError(f"Invalid chatbot data format: {type(chatbot_data)}")
-
-        current_app.logger.debug(f"Processed chatbot data type: {type(chatbot_data)}")
-        current_app.logger.debug(f"Processed chatbot data: {chatbot_data}")
-
-        answer = get_general_answer(json.dumps(chatbot_data), question)
-
-        # Calculate processing time
-        processing_time = time.time() - start_time
-
-        # Track analytics
-        analytics_data = {
-            "question": question,
-            "answer": answer,
-            "question_metadata": {
-                "processing_time": processing_time,
-                "keywords_matched": [
-                    keyword for keyword in ["proce", "inventory", "stock", "available", "category", "type"]
-                    if keyword in question.lower()
-                ]
-            }
-        }
-        track_question_helper(chatbot_id, analytics_data)
-
+        # Prepare data for NLP service
+        chatbot_data = chatbot.data if isinstance(chatbot.data, str) else json.dumps(chatbot.data)
+        
+        # print(f'chatbot_data: {chatbot_data}')
+        # Call NLP service
+        nlp_response = requests.post(
+            f"{NLP_SERVICE_URL}/generate_answer",
+            json={"data": chatbot_data, "question": question},
+            timeout=15  # Add timeout to prevent hanging
+        )
+        nlp_response.raise_for_status()  # Raise exception for bad status codes
+        
+        answer = nlp_response.json().get("answer")
+        
         return jsonify({
             "question": question,
-            "answer": answer,
-            "processing_time": round(processing_time, 3)
+            "answer": answer
         })
 
-    except json.JSONDecodeError as e:
-        current_app.logger.error(f"JSON decode error: {str(e)}")
-        return jsonify({"error": "Invalid chatbot data format"}), 500
-    except ValueError as e:
-        current_app.logger.error(f"Value error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Error calling NLP service: {str(e)}")
+        return jsonify({"error": "Failed to process question"}), 500
     except Exception as e:
         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
-
 
 
 
