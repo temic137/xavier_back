@@ -470,81 +470,92 @@ Provide a response that:
         logging.error(f"Error generating answer: {str(e)}")
         return "I apologize, but I encountered an issue while processing your question."
 
-def get_general_answer(data, question):
-    """
-    Process data and generate an answer to a question.
-    Memory-optimized version.
+# def get_general_answer(data, question):
+#     """
+#     Process data and generate an answer to a question.
+#     Memory-optimized version.
     
-    Args:
-        data: Input data (JSON or dict)
-        question: User question
+#     Args:
+#         data: Input data (JSON or dict)
+#         question: User question
         
-    Returns:
-        Generated answer
-    """
+#     Returns:
+#         Generated answer
+#     """
+#     try:
+#         # Process input data
+#         chatbot_data = json.loads(data) if isinstance(data, str) else data
+        
+#         # Handle list input
+#         if isinstance(chatbot_data, list) and chatbot_data:
+#             chatbot_data = chatbot_data[-1]
+        
+#         if not isinstance(chatbot_data, dict):
+#             raise ValueError("Invalid data format.")
+        
+#         # Extract data from different sources
+#         pdf_data = chatbot_data.get('pdf_data', [])
+#         folder_data = chatbot_data.get('folder_data', [])
+#         web_data = chatbot_data.get('web_data', {})
+        
+#         # Process data in chunks
+#         structured_data = []
+        
+#         # Process PDF data in chunks
+#         chunk_size = 10  # Smaller chunks to avoid memory spikes
+#         for i in range(0, len(pdf_data), chunk_size):
+#             pdf_chunk = pdf_data[i:i+chunk_size]
+#             chunk_result = preprocess_data_chunk(pdf_chunk, [], {})
+#             structured_data.extend(chunk_result)
+#             # Free memory
+#             del pdf_chunk, chunk_result
+        
+#         # Process folder data in chunks
+#         for i in range(0, len(folder_data), chunk_size):
+#             folder_chunk = folder_data[i:i+chunk_size]
+#             chunk_result = preprocess_data_chunk([], folder_chunk, {})
+#             structured_data.extend(chunk_result)
+#             # Free memory
+#             del folder_chunk, chunk_result
+        
+#         # Process web data
+#         if web_data:
+#             web_result = preprocess_web_data(web_data)
+#             structured_data.extend(web_result)
+#             # Free memory
+#             del web_result
+        
+#         # Get text data in chunks
+#         text_data = []
+#         for i in range(0, len(structured_data), 100):
+#             chunk = structured_data[i:i+100]
+#             text_chunk = [item.get('content', '') for item in chunk if isinstance(item, dict) and 'content' in item]
+#             text_data.extend(text_chunk)
+#             # Free memory
+#             del chunk, text_chunk
+        
+#         # Generate answer
+#         answer = generate_answer(question, text_data)
+        
+#         # Clean up
+#         del text_data, structured_data
+        
+#         return answer
+        
+#     except Exception as e:
+#         logging.error(f"Error processing question: {str(e)}")
+#         return "I apologize, but I ran into an issue while processing your question. Could you try rephrasing it?"
+
+def get_general_answer(data, question):
     try:
-        # Process input data
         chatbot_data = json.loads(data) if isinstance(data, str) else data
-        
-        # Handle list input
-        if isinstance(chatbot_data, list) and chatbot_data:
-            chatbot_data = chatbot_data[-1]
-        
-        if not isinstance(chatbot_data, dict):
-            raise ValueError("Invalid data format.")
-        
-        # Extract data from different sources
-        pdf_data = chatbot_data.get('pdf_data', [])
-        folder_data = chatbot_data.get('folder_data', [])
-        web_data = chatbot_data.get('web_data', {})
-        
-        # Process data in chunks
-        structured_data = []
-        
-        # Process PDF data in chunks
-        chunk_size = 10  # Smaller chunks to avoid memory spikes
-        for i in range(0, len(pdf_data), chunk_size):
-            pdf_chunk = pdf_data[i:i+chunk_size]
-            chunk_result = preprocess_data_chunk(pdf_chunk, [], {})
-            structured_data.extend(chunk_result)
-            # Free memory
-            del pdf_chunk, chunk_result
-        
-        # Process folder data in chunks
-        for i in range(0, len(folder_data), chunk_size):
-            folder_chunk = folder_data[i:i+chunk_size]
-            chunk_result = preprocess_data_chunk([], folder_chunk, {})
-            structured_data.extend(chunk_result)
-            # Free memory
-            del folder_chunk, chunk_result
-        
-        # Process web data
-        if web_data:
-            web_result = preprocess_web_data(web_data)
-            structured_data.extend(web_result)
-            # Free memory
-            del web_result
-        
-        # Get text data in chunks
-        text_data = []
-        for i in range(0, len(structured_data), 100):
-            chunk = structured_data[i:i+100]
-            text_chunk = [item.get('content', '') for item in chunk if isinstance(item, dict) and 'content' in item]
-            text_data.extend(text_chunk)
-            # Free memory
-            del chunk, text_chunk
-        
-        # Generate answer
-        answer = generate_answer(question, text_data)
-        
-        # Clean up
-        del text_data, structured_data
-        
-        return answer
-        
+        text_data = chatbot_data.get('text_data', [])
+        if not text_data:
+            return "I don’t have enough information to answer that question."
+        return generate_answer(question, text_data)
     except Exception as e:
         logging.error(f"Error processing question: {str(e)}")
-        return "I apologize, but I ran into an issue while processing your question. Could you try rephrasing it?"
+        return "I apologize, but I ran into an issue while processing your question."
 
 
 import json
