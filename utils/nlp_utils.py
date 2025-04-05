@@ -463,7 +463,7 @@ Provide a response that:
         
         # Free up memory
         del context, chat_completion
-        
+        print(f"asnwer1:{answer}")
         return answer
 
     except Exception as e:
