@@ -391,61 +391,102 @@ import time
 
 
 
+#-----------------------------------------------
 
+# @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
+# def chatbot_ask(chatbot_id):
+#     start_time = time.time()  # Start timing the request
+
+#     # Validate chatbot exists
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     # Validate input
+#     if request.content_type != 'application/json':
+#         return jsonify({"error": "Unsupported content type"}), 415
+    
+#     data = request.json
+#     question = data.get('question')
+#     if not question:
+#         return jsonify({"error": "No question provided"}), 400
+
+#     try:
+#         # Log question for debugging
+#         current_app.logger.info(f"Processing question for chatbot {chatbot_id}: {question}")
+        
+#         # Get relevant context passages instead of loading all data
+#         relevant_passages = get_relevant_context_for_chatbot(chatbot, question)
+        
+#         # Generate answer using only relevant passages
+#         answer = generate_answer(question, relevant_passages)
+        
+#         # Calculate processing time
+#         processing_time = time.time() - start_time
+
+#         # Track analytics
+#         analytics_data = {
+#             "question": question,
+#             "answer": answer,
+#             "question_metadata": {
+#                 "processing_time": processing_time,
+#                 "context_passages_count": len(relevant_passages),
+#                 "keywords_matched": extract_keywords(question)
+#             }
+#         }
+#         track_question_helper(chatbot_id, analytics_data)
+
+#         return jsonify({
+#             "question": question,
+#             "answer": answer,
+#             "processing_time": round(processing_time, 3)
+#         })
+
+#     except Exception as e:
+#         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
+
+#----------------------------------------------------------------
 
 @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
 def chatbot_ask(chatbot_id):
-    start_time = time.time()  # Start timing the request
-
-    # Validate chatbot exists
+    start_time = time.time()
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
         return jsonify({"error": "Chatbot not found"}), 404
 
-    # Validate input
-    if request.content_type != 'application/json':
-        return jsonify({"error": "Unsupported content type"}), 415
-    
     data = request.json
     question = data.get('question')
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
-    try:
-        # Log question for debugging
-        current_app.logger.info(f"Processing question for chatbot {chatbot_id}: {question}")
-        
-        # Get relevant context passages instead of loading all data
-        relevant_passages = get_relevant_context_for_chatbot(chatbot, question)
-        
-        # Generate answer using only relevant passages
-        answer = generate_answer(question, relevant_passages)
-        
-        # Calculate processing time
-        processing_time = time.time() - start_time
+    # Preprocess question for keywords
+    keywords = preprocess_text(question).split()
 
-        # Track analytics
-        analytics_data = {
-            "question": question,
-            "answer": answer,
-            "question_metadata": {
-                "processing_time": processing_time,
-                "context_passages_count": len(relevant_passages),
-                "keywords_matched": extract_keywords(question)
-            }
-        }
-        track_question_helper(chatbot_id, analytics_data)
+    # Query relevant data chunks (example using SQLAlchemy)
+    relevant_chunks = db.session.query(ChatbotData).filter(
+        ChatbotData.chatbot_id == chatbot_id,
+        ChatbotData.content.ilike(f'%{"%".join(keywords)}%')  # Simple keyword search
+    ).limit(5).all()  # Limit to top 5 chunks to control memory
 
-        return jsonify({
-            "question": question,
-            "answer": answer,
-            "processing_time": round(processing_time, 3)
-        })
+    # Extract text from chunks
+    text_data = [chunk.content for chunk in relevant_chunks]
 
-    except Exception as e:
-        current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
+    # Generate answer
+    answer = get_general_answer(json.dumps({"text_data": text_data}), question)
 
+    processing_time = time.time() - start_time
+    track_question_helper(chatbot_id, {
+        "question": question,
+        "answer": answer,
+        "question_metadata": {"processing_time": processing_time}
+    })
+
+    return jsonify({
+        "question": question,
+        "answer": answer,
+        "processing_time": round(processing_time, 3)
+    })
 
 
 
