@@ -352,7 +352,7 @@ def chatbot_ask(chatbot_id):
        
        
         answer = get_general_answer(json.dumps(chatbot_data), question)
-        
+        print(f"answer: {answer}")
         # Calculate processing time
         processing_time = time.time() - start_time
         
