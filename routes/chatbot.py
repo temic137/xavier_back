@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, session, current_app,logging, url
 from models import Chatbot,Feedback, Ticket, TicketResponse,QuestionAnalytics
 from werkzeug.utils import secure_filename
 from extensions import db
-from utils.nlp_utils import  get_general_answer, extract_keywords, generate_answer
+from utils.nlp_utils import  get_general_answer, generate_answer
 from utils.file_utils import extract_text_from_pdf, read_text_file,extract_folder_content,extract_text_from_url
 from utils.api_utils import fetch_real_time_data
 import json
