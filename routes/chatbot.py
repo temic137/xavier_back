@@ -490,18 +490,6 @@ def chatbot_ask(chatbot_id):
         
         processing_time = time.time() - start_time
 
-        # Track analytics
-        analytics_data = {
-            "question": question,
-            "answer": answer,
-            "question_metadata": {
-                "processing_time": processing_time,
-                "context_passages_count": len(relevant_passages),
-                "keywords_matched": extract_keywords(question)
-            }
-        }
-        track_question_helper(chatbot_id, analytics_data)
-
         return jsonify({
             "question": question,
             "answer": answer,
