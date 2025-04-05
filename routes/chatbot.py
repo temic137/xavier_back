@@ -138,111 +138,64 @@ def transcribe_audio():
 @chatbot_bp.route('/train_chatbot/<chatbot_id>', methods=['POST'])
 @handle_errors
 def train_chatbot(chatbot_id):
-    try:
-        chatbot = Chatbot.query.get(chatbot_id)
-        if not chatbot or chatbot.user_id != session['user_id']:
-            return jsonify({"error": "Chatbot not found or unauthorized"}), 404
-        
-        file = request.files.get('file')
-        api_url = request.form.get('api_url')
-        folder_path = request.form.get('folder_path')
-        website_url = request.form.get('website_url')
-        
-        pdf_data = []
-        db_data = []
-        folder_data = []
-        web_data = []
-        
-        if file:
-            filename = secure_filename(file.filename)
-            upload_folder = current_app.config['UPLOAD_FOLDER']
-            
-            os.makedirs(upload_folder, exist_ok=True)
-            
-            filepath = os.path.join(upload_folder, filename)
-            file.save(filepath)
-            
-            file_extension = os.path.splitext(filename)[1].lower()
-            
-            try:
-                if file_extension == '.pdf':
-                    pdf_text = extract_text_from_pdf(filepath)
-                    pdf_data.append(pdf_text)
-                    print(f"data:{pdf_data}")
-                elif file_extension in ['.txt', '.md', '.rst']:
-                    raw_text = read_text_file(filepath)
-                    pdf_data.append({'page': 'file', 'text': raw_text})
-                    
-                else:
-                    return jsonify({"error": f"Unsupported file type: {file_extension}"}), 400
-            except Exception as e:
-                current_app.logger.error(f"Error processing file {filename}: {str(e)}")
-                return jsonify({"error": f"Error processing file {filename}: {str(e)}"}), 500
-            finally:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-        
-        if api_url:
-            try:
-                real_time_data = fetch_real_time_data(api_url)
-                if real_time_data:
-                    real_time_text = json.dumps(real_time_data, indent=2)
-                    db_data.append({'page': 'real_time', 'text': real_time_text})
-            except Exception as e:
-                current_app.logger.error(f"Error fetching data from API {api_url}: {str(e)}")
-                return jsonify({"error": f"Error fetching data from API: {str(e)}"}), 500
-        
-        if folder_path:
-            try:
-                folder_data = extract_folder_content(folder_path)
-            except Exception as e:
-                current_app.logger.error(f"Error extracting content from folder {folder_path}: {str(e)}")
-                return jsonify({"error": f"Error extracting content from folder: {str(e)}"}), 500
-        
-        if website_url:
-            try:
-                extracted_data = extract_text_from_url(website_url)
-                if isinstance(extracted_data, list) and extracted_data and extracted_data[0].get('tag') == 'error':
-                    return jsonify({"error": extracted_data[0]['text']}), 400
-                web_data = extracted_data
-            except Exception as e:
-                current_app.logger.error(f"Error extracting text from URL {website_url}: {str(e)}")
-                return jsonify({"error": f"Error extracting text from URL: {str(e)}"}), 500
-        
-        if not pdf_data and not db_data and not folder_data and not web_data:
-            return jsonify({"error": "No data provided. Please upload a file, provide a folder path, provide an API URL, provide a website URL, or ensure MongoDB has data."}), 400
-       
-        new_data = {
-            "pdf_data": pdf_data,
-            "db_data": db_data,
-            "folder_data": folder_data,
-            "web_data": web_data
-        }
-        
-        # If chatbot.data is empty, initialize it as a list
-        if not chatbot.data:
-            chatbot.data = []
-        
-        # If chatbot.data is a string, parse it first
-        if isinstance(chatbot.data, str):
-            chatbot.data = json.loads(chatbot.data)
-        
-        # Append the new data to the existing data
-        if isinstance(chatbot.data, list):
-            chatbot.data.append(new_data)
-        else:
-            chatbot.data = [chatbot.data, new_data]
-        
-        # Convert the entire data structure back to a JSON string
-        chatbot.data = json.dumps(chatbot.data)
-        
-        db.session.commit()
-        
-        return jsonify({"message": "Chatbot trained successfully"}), 200
+    chatbot = Chatbot.query.get(chatbot_id)
+    if not chatbot or chatbot.user_id != session['user_id']:
+        return jsonify({"error": "Chatbot not found or unauthorized"}), 404
     
-    except Exception as e:
-        current_app.logger.error(f"Unexpected error in train_chatbot: {str(e)}")
-        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+    file = request.files.get('file')
+    api_url = request.form.get('api_url')
+    folder_path = request.form.get('folder_path')
+    website_url = request.form.get('website_url')
+    
+    pdf_data, db_data, folder_data, web_data = [], [], [], []
+    
+    if file:
+        filename = secure_filename(file.filename)
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        os.makedirs(upload_folder, exist_ok=True)
+        filepath = os.path.join(upload_folder, filename)
+        file.save(filepath)
+        file_extension = os.path.splitext(filename)[1].lower()
+        if file_extension == '.pdf':
+            pdf_text = extract_text_from_pdf(filepath)
+            pdf_data.append(pdf_text)
+        elif file_extension in ['.txt', '.md', '.rst']:
+            raw_text = read_text_file(filepath)
+            pdf_data.append({'page': 'file', 'text': raw_text})
+        os.remove(filepath)
+    
+    if api_url:
+        real_time_data = fetch_real_time_data(api_url)
+        if real_time_data:
+            real_time_text = json.dumps(real_time_data, indent=2)
+            db_data.append({'page': 'real_time', 'text': real_time_text})
+    if folder_path:
+        folder_data = extract_folder_content(folder_path)
+    if website_url:
+        web_data = extract_text_from_url(website_url)
+    
+    if not (pdf_data or db_data or folder_data or web_data):
+        return jsonify({"error": "No data provided."}), 400
+    
+    new_data = {"pdf_data": pdf_data, "db_data": db_data, "folder_data": folder_data, "web_data": web_data}
+    
+    if not chatbot.data:
+        chatbot.data = []
+    if isinstance(chatbot.data, str):
+        chatbot.data = json.loads(chatbot.data)
+    if isinstance(chatbot.data, list):
+        chatbot.data.append(new_data)
+    else:
+        chatbot.data = [chatbot.data, new_data]
+    
+    # Initialize FAISS index with preprocessed data
+    structured_data = preprocess_data(pdf_data, folder_data, web_data)
+    initialize_faiss_index(structured_data, chatbot_id)
+    
+    chatbot.data = json.dumps(chatbot.data)
+    db.session.commit()
+    
+    return jsonify({"message": "Chatbot trained successfully"}), 200
 
 
 
@@ -454,40 +407,27 @@ def chatbot_ask(chatbot_id):
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
         return jsonify({"error": "Chatbot not found"}), 404
-
+    
     data = request.json
     question = data.get('question')
     if not question:
         return jsonify({"error": "No question provided"}), 400
-
-    # Preprocess question for keywords
-    keywords = preprocess_text(question).split()
-
-    # Query relevant data chunks (example using SQLAlchemy)
-    relevant_chunks = db.session.query(ChatbotData).filter(
-        ChatbotData.chatbot_id == chatbot_id,
-        ChatbotData.content.ilike(f'%{"%".join(keywords)}%')  # Simple keyword search
-    ).limit(5).all()  # Limit to top 5 chunks to control memory
-
-    # Extract text from chunks
-    text_data = [chunk.content for chunk in relevant_chunks]
-
-    # Generate answer
-    answer = get_general_answer(json.dumps({"text_data": text_data}), question)
-
+    
+    # Use FAISS-based retrieval with Hugging Face embeddings
+    answer = get_general_answer(chatbot.data, question, chatbot_id)
+    
     processing_time = time.time() - start_time
     track_question_helper(chatbot_id, {
         "question": question,
         "answer": answer,
         "question_metadata": {"processing_time": processing_time}
     })
-
+    
     return jsonify({
         "question": question,
         "answer": answer,
         "processing_time": round(processing_time, 3)
     })
-
 
 
 
