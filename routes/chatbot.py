@@ -393,113 +393,113 @@ import time
 
 
 
-# @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
-# def chatbot_ask(chatbot_id):
-#     start_time = time.time()  # Start timing the request
-
-#     # Validate chatbot exists
-#     chatbot = Chatbot.query.get(chatbot_id)
-#     if not chatbot:
-#         return jsonify({"error": "Chatbot not found"}), 404
-
-#     # Validate input
-#     if request.content_type != 'application/json':
-#         return jsonify({"error": "Unsupported content type"}), 415
-    
-#     data = request.json
-#     question = data.get('question')
-#     if not question:
-#         return jsonify({"error": "No question provided"}), 400
-
-#     try:
-#         # Log question for debugging
-#         current_app.logger.info(f"Processing question for chatbot {chatbot_id}: {question}")
-        
-#         # Get relevant context passages instead of loading all data
-#         relevant_passages = get_relevant_context_for_chatbot(chatbot, question)
-        
-#         # Generate answer using only relevant passages
-#         answer = generate_answer(question, relevant_passages)
-        
-#         # Calculate processing time
-#         processing_time = time.time() - start_time
-
-#         # Track analytics
-#         analytics_data = {
-#             "question": question,
-#             "answer": answer,
-#             "question_metadata": {
-#                 "processing_time": processing_time,
-#                 "context_passages_count": len(relevant_passages),
-#                 "keywords_matched": extract_keywords(question)
-#             }
-#         }
-#         track_question_helper(chatbot_id, analytics_data)
-
-#         return jsonify({
-#             "question": question,
-#             "answer": answer,
-#             "processing_time": round(processing_time, 3)
-#         })
-
-#     except Exception as e:
-#         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
-#         return jsonify({"error": "An unexpected error occurred"}), 500
-
-
-
-
-
 @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
 def chatbot_ask(chatbot_id):
-    start_time = time.time()
-    
+    start_time = time.time()  # Start timing the request
+
+    # Validate chatbot exists
     chatbot = Chatbot.query.get(chatbot_id)
     if not chatbot:
         return jsonify({"error": "Chatbot not found"}), 404
 
+    # Validate input
     if request.content_type != 'application/json':
         return jsonify({"error": "Unsupported content type"}), 415
     
     data = request.json
     question = data.get('question')
-    conversation_history = data.get('conversation_history', [])
-    
     if not question:
         return jsonify({"error": "No question provided"}), 400
 
     try:
+        # Log question for debugging
         current_app.logger.info(f"Processing question for chatbot {chatbot_id}: {question}")
         
+        # Get relevant context passages instead of loading all data
         relevant_passages = get_relevant_context_for_chatbot(chatbot, question)
         
-        # Build full context with history
-        full_context = ""
-        for entry in conversation_history[-5:]:  # Limit to last 5 messages
-            role = "User" if entry['role'] == 'user' else "Bot"
-            full_context += f"{role}: {entry['content']}\n"
-        full_context += f"User: {question}"
+        # Generate answer using only relevant passages
+        answer = generate_answer(question, relevant_passages)
         
-        answer = generate_answer(full_context, relevant_passages)
-        
-        # Update conversation history
-        updated_history = conversation_history + [
-            {"role": "user", "content": question},
-            {"role": "bot", "content": answer}
-        ]
-        
+        # Calculate processing time
         processing_time = time.time() - start_time
+
+        # Track analytics
+        analytics_data = {
+            "question": question,
+            "answer": answer,
+            "question_metadata": {
+                "processing_time": processing_time,
+                "context_passages_count": len(relevant_passages),
+                "keywords_matched": extract_keywords(question)
+            }
+        }
+        track_question_helper(chatbot_id, analytics_data)
 
         return jsonify({
             "question": question,
             "answer": answer,
-            "conversation_history": updated_history,
             "processing_time": round(processing_time, 3)
         })
 
     except Exception as e:
         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
+
+
+
+
+
+# @chatbot_bp.route('/chatbot/<chatbot_id>/ask', methods=['POST'])
+# def chatbot_ask(chatbot_id):
+#     start_time = time.time()
+    
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     if request.content_type != 'application/json':
+#         return jsonify({"error": "Unsupported content type"}), 415
+    
+#     data = request.json
+#     question = data.get('question')
+#     conversation_history = data.get('conversation_history', [])
+    
+#     if not question:
+#         return jsonify({"error": "No question provided"}), 400
+
+#     try:
+#         current_app.logger.info(f"Processing question for chatbot {chatbot_id}: {question}")
+        
+#         relevant_passages = get_relevant_context_for_chatbot(chatbot, question)
+        
+#         # Build full context with history
+#         full_context = ""
+#         for entry in conversation_history[-5:]:  # Limit to last 5 messages
+#             role = "User" if entry['role'] == 'user' else "Bot"
+#             full_context += f"{role}: {entry['content']}\n"
+#         full_context += f"User: {question}"
+        
+#         answer = generate_answer(full_context, relevant_passages)
+        
+#         # Update conversation history
+#         updated_history = conversation_history + [
+#             {"role": "user", "content": question},
+#             {"role": "bot", "content": answer}
+#         ]
+        
+#         processing_time = time.time() - start_time
+
+#         return jsonify({
+#             "question": question,
+#             "answer": answer,
+#             "conversation_history": updated_history,
+#             "processing_time": round(processing_time, 3)
+#         })
+
+#     except Exception as e:
+#         current_app.logger.error(f"Error in chatbot_ask: {str(e)}")
+#         return jsonify({"error": "An unexpected error occurred"}), 500
     
 
 
