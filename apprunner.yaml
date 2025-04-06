@@ -1,0 +1,9 @@
+version: 1.0
+runtime: python3  # Uses Python 3.9+ (App Runner’s default Python runtime)
+build:
+  commands:
+    - python -m ensurepip --upgrade  # Ensures pip is available
+    - python -m pip install --upgrade pip  # Upgrades pip
+    - pip install -r requirements.txt  # Installs your dependencies
+run:
+  command: python app.py  # Replace "app.py" with your Flask app’s entry point
