@@ -3,11 +3,15 @@ runtime: python3
 build:
   commands:
     build:
-      - python -m ensurepip --upgrade
-      - python -m pip install --upgrade pip
+      - pip install --upgrade pip
       - pip install -r requirements.txt
 run:
-  command: python app.py
+  command: python -m gunicorn --bind=0.0.0.0:$PORT app:app
   network:
     port: 8080
-    env: APP_PORT
+    env: PORT
+  env:
+    - name: FLASK_ENV
+      value: "production"
+    - name: PYTHONUNBUFFERED
+      value: "1"
