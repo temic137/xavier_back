@@ -757,6 +757,44 @@ def get_all_chatbots_feedback():
 
 
 
+# @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
+# @login_required
+# @handle_errors
+# def get_chatbot_script(chatbot_id):
+#     chatbot = Chatbot.query.get(chatbot_id)
+#     if not chatbot:
+#         return jsonify({"error": "Chatbot not found"}), 404
+
+#     # Get customization settings with defaults
+#     customization = {
+#         "theme_color": "",
+#         "avatar_url": "",
+#         "pusher_key": "43bd6f1835e5bb8165d8",  # Add default for pusher_key
+#         "pusher_cluster": "us3"  # Add default for pusher_cluster
+#     }
+#     if chatbot.data:
+#         try:
+#             chatbot_data = json.loads(chatbot.data) if isinstance(chatbot.data, str) else chatbot.data
+#             if isinstance(chatbot_data, list) and chatbot_data:
+#                 chatbot_data = chatbot_data[-1]
+#             if isinstance(chatbot_data, dict):
+#                 stored_custom = chatbot_data.get('customization', {})
+#                 customization.update(stored_custom)
+#         except json.JSONDecodeError:
+#             pass
+
+#     # Generate compact script with Pusher key and cluster
+#     script = (
+#         f'''<script src="{url_for('static', filename='js/widget.js', _external=True)}" data-id="{chatbot_id}" data-name="{chatbot.name}" data-theme="{customization['theme_color']}" data-avatar="{customization['avatar_url']}" data-api="{request.url_root}" data-pusher-key="{customization['pusher_key']}" data-pusher-cluster="{customization['pusher_cluster']}"></script>'''
+#     )
+
+#     return jsonify({
+#         'integration_code': script,
+#         'preview': script
+#     })
+
+
+
 @chatbot_bp.route('/get_chatbot_script/<chatbot_id>')
 @login_required
 @handle_errors
@@ -769,8 +807,8 @@ def get_chatbot_script(chatbot_id):
     customization = {
         "theme_color": "",
         "avatar_url": "",
-        "pusher_key": "43bd6f1835e5bb8165d8",  # Add default for pusher_key
-        "pusher_cluster": "us3"  # Add default for pusher_cluster
+        "pusher_key": "43bd6f1835e5bb8165d8",
+        "pusher_cluster": "us3"
     }
     if chatbot.data:
         try:
@@ -783,15 +821,16 @@ def get_chatbot_script(chatbot_id):
         except json.JSONDecodeError:
             pass
 
-    # Generate compact script with Pusher key and cluster
+    # Ensure HTTPS in the script URL
     script = (
-        f'''<script src="{url_for('static', filename='js/widget.js', _external=True)}" data-id="{chatbot_id}" data-name="{chatbot.name}" data-theme="{customization['theme_color']}" data-avatar="{customization['avatar_url']}" data-api="{request.url_root}" data-pusher-key="{customization['pusher_key']}" data-pusher-cluster="{customization['pusher_cluster']}"></script>'''
+        f'''<script src="{url_for('static', filename='js/widget.js', _external=True, _scheme='https')}" data-id="{chatbot_id}" data-name="{chatbot.name}" data-theme="{customization['theme_color']}" data-avatar="{customization['avatar_url']}" data-api="{request.url_root.replace('http://', 'https://')}" data-pusher-key="{customization['pusher_key']}" data-pusher-cluster="{customization['pusher_cluster']}" data-enable-leads="true"></script>'''
     )
 
     return jsonify({
         'integration_code': script,
         'preview': script
     })
+
 
 @chatbot_bp.route('/ticket/create/<chatbot_id>', methods=['POST'])
 def create_ticket(chatbot_id):
