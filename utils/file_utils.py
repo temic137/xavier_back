@@ -23,12 +23,18 @@ def extract_text_from_pdf(pdf_path):
 
 
 def read_text_file(file_path):
-    with open(file_path, 'r') as file:
-        text_data = file.read()
-    
-    print(f'text:{text_data}')
-    return text_data
-
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            text_data = file.read()
+        return text_data
+    except UnicodeDecodeError:
+        # Try with a different encoding if UTF-8 fails
+        with open(file_path, 'r', encoding='latin-1') as file:
+            text_data = file.read()
+        return text_data
+    except Exception as e:
+        logger.error(f"Error reading text file {file_path}: {e}")
+        return ""
 
 def extract_folder_content(folder_path):
     folder_data = []
@@ -41,10 +47,16 @@ def extract_folder_content(folder_path):
                 pdf_content = extract_text_from_pdf(file_path)
                 folder_data.extend(pdf_content)
             elif file_extension in ['.txt', '.md', '.rst']:
-                text_content = read_text_file(file_path)
-                relative_path = os.path.relpath(file_path, folder_path)
-                folder_data.append({'path': relative_path, 'text': text_content})
-    print(folder_data)
+                try:
+                    text_content = read_text_file(file_path)
+                    relative_path = os.path.relpath(file_path, folder_path)
+                    # Format text file content similar to PDF content for consistency
+                    folder_data.append({'page': 1, 'text': text_content, 'path': relative_path})
+                    logger.debug(f"Successfully processed text file: {relative_path}")
+                except Exception as e:
+                    logger.error(f"Error processing text file {file_path}: {e}")
+    
+    logger.info(f"Extracted content from {len(folder_data)} files/pages")
     return folder_data
 
 
